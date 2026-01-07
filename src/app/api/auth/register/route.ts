@@ -1,10 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json();
+    // Check if user is authenticated and is admin
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Необходима авторизация" },
+        { status: 401 }
+      );
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { error: "Только администратор может создавать пользователей" },
+        { status: 403 }
+      );
+    }
+
+    const { email, password, name, role } = await request.json();
 
     // Validation
     if (!email || !password) {
@@ -42,6 +61,7 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         name: name || null,
+        role: role || "EDITOR",
       },
     });
 
@@ -52,6 +72,7 @@ export async function POST(request: NextRequest) {
           id: user.id,
           email: user.email,
           name: user.name,
+          role: user.role,
         },
       },
       { status: 201 }
@@ -59,7 +80,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Registration error:", error);
     return NextResponse.json(
-      { error: "Ошибка при регистрации" },
+      { error: "Ошибка при создании пользователя" },
       { status: 500 }
     );
   }

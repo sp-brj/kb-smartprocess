@@ -31,6 +31,14 @@ export default async function DashboardLayout({
             >
               + Новая статья
             </Link>
+            {session?.user?.role === "ADMIN" && (
+              <Link
+                href="/admin/users"
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Пользователи
+              </Link>
+            )}
             <span className="text-sm text-gray-600">{session?.user?.email}</span>
             <SignOutButton />
           </div>
