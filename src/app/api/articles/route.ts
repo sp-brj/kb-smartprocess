@@ -3,6 +3,24 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[а-яё]/g, (char) => {
+      const map: Record<string, string> = {
+        а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "yo",
+        ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m",
+        н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u",
+        ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sch",
+        ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
+      };
+      return map[char] || char;
+    })
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .substring(0, 100);
+}
+
 // GET /api/articles - list articles
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -44,11 +62,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Заголовок обязателен" }, { status: 400 });
     }
 
-    // Generate slug
-    const baseSlug = title
-      .toLowerCase()
-      .replace(/[^a-zа-яё0-9]+/gi, "-")
-      .replace(/^-|-$/g, "");
+    // Generate slug with Cyrillic transliteration
+    const baseSlug = generateSlug(title);
 
     // Check uniqueness
     const existingArticle = await prisma.article.findUnique({ where: { slug: baseSlug } });
