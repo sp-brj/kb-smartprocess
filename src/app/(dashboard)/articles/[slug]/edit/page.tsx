@@ -8,9 +8,10 @@ interface Props {
 
 export default async function EditArticlePage({ params }: Props) {
   const { slug } = await params;
+  const decodedSlug = decodeURIComponent(slug);
 
   const article = await prisma.article.findUnique({
-    where: { slug },
+    where: { slug: decodedSlug },
   });
 
   if (!article) {

@@ -11,9 +11,10 @@ interface Props {
 
 export default async function ArticlePage({ params }: Props) {
   const { slug } = await params;
+  const decodedSlug = decodeURIComponent(slug);
 
   const article = await prisma.article.findUnique({
-    where: { slug },
+    where: { slug: decodedSlug },
     include: {
       author: { select: { name: true, email: true } },
       folder: { select: { name: true, slug: true } },

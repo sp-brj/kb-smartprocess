@@ -42,6 +42,14 @@ test.describe("Articles CRUD", () => {
     expect(url).not.toMatch(/[а-яё]/i);
     // And contains transliterated base
     expect(url).toMatch(/\/articles\/testovaya-stat/);
+
+    // Now go to home and reopen article to test URL navigation
+    await page.goto("/");
+    await page.goto(url);
+
+    // Article should still be visible (no 404!)
+    await expect(page.locator("h1")).toContainText(title, { timeout: 10000 });
+    await expect(page.locator("text=Контент статьи на русском языке")).toBeVisible();
   });
 
   test("should edit an existing article", async ({ page }) => {
