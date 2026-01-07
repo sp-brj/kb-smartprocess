@@ -47,6 +47,32 @@ test.describe("Folders", () => {
     );
   });
 
+  test("should navigate to folder page with Cyrillic name", async ({
+    page,
+  }) => {
+    await login(page, "folders-cyrillic");
+
+    // Create folder with Cyrillic name
+    await page.click("text=+ Новая");
+    const folderName = `Тестовая Папка ${Date.now()}`;
+    await page.fill('input[placeholder="Название папки"]', folderName);
+    await page.click('button:has-text("Создать")');
+    await expect(page.locator(`text=${folderName}`)).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Click on the folder in sidebar
+    await page.click(`text=${folderName}`);
+
+    // Should navigate to folder page and show folder name as title
+    await expect(page.locator("h1")).toContainText(folderName, {
+      timeout: 10000,
+    });
+
+    // URL should contain encoded Cyrillic slug
+    await expect(page).toHaveURL(/\/folders\//);
+  });
+
   test("should show articles in folder page", async ({ page }) => {
     await login(page, "folder-art");
 

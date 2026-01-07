@@ -16,16 +16,27 @@ const prisma = new PrismaClient();
 // Паттерны для определения тестовых данных
 const TEST_EMAIL_PATTERN = "@example.com";
 const TIMESTAMP_PATTERN = /\d{13}/; // 13-значный timestamp
+// Постоянный тестовый пользователь, который НЕ удаляется
+const PERMANENT_TEST_USER = "e2e-test@example.com";
 
 async function cleanupTestData() {
   console.log("🧹 Начинаю очистку тестовых данных...\n");
 
-  // 1. Найти тестовых пользователей
+  // 1. Найти тестовых пользователей (кроме постоянного)
   const testUsers = await prisma.user.findMany({
     where: {
-      email: {
-        contains: TEST_EMAIL_PATTERN,
-      },
+      AND: [
+        {
+          email: {
+            contains: TEST_EMAIL_PATTERN,
+          },
+        },
+        {
+          email: {
+            not: PERMANENT_TEST_USER,
+          },
+        },
+      ],
     },
     select: {
       id: true,
@@ -92,6 +103,7 @@ async function cleanupTestData() {
   });
 
   // Фильтруем только те, что имеют timestamp в названии
+  // Статьи постоянного тестового пользователя удаляются только если имеют timestamp
   const articlesToDelete = testArticles.filter(
     (a) =>
       TIMESTAMP_PATTERN.test(a.title) ||
@@ -113,6 +125,16 @@ async function cleanupTestData() {
         {
           name: {
             contains: "Folder for Article",
+          },
+        },
+        {
+          name: {
+            contains: "Nav Folder",
+          },
+        },
+        {
+          name: {
+            contains: "Тестовая Папка",
           },
         },
       ],

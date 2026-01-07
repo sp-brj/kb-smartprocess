@@ -8,9 +8,10 @@ interface PageProps {
 
 export default async function FolderPage({ params }: PageProps) {
   const { slug } = await params;
+  const decodedSlug = decodeURIComponent(slug);
 
   const folder = await prisma.folder.findUnique({
-    where: { slug },
+    where: { slug: decodedSlug },
     include: {
       articles: {
         include: {
