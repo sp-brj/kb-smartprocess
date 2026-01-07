@@ -12,7 +12,17 @@ export async function GET() {
 
   const folders = await prisma.folder.findMany({
     include: {
-      children: true,
+      children: {
+        include: {
+          children: {
+            include: {
+              children: true,
+              _count: { select: { articles: true } },
+            },
+          },
+          _count: { select: { articles: true } },
+        },
+      },
       _count: { select: { articles: true } },
     },
     orderBy: { name: "asc" },
@@ -33,6 +43,32 @@ export async function POST(request: NextRequest) {
 
     if (!name) {
       return NextResponse.json({ error: "Название обязательно" }, { status: 400 });
+    }
+
+    // Check folder depth (max 3 levels)
+    if (parentId) {
+      let depth = 1;
+      let currentParentId: string | null = parentId;
+
+      while (currentParentId && depth <= 3) {
+        const parent = await prisma.folder.findUnique({
+          where: { id: currentParentId },
+          select: { parentId: true },
+        });
+        if (parent?.parentId) {
+          depth++;
+          currentParentId = parent.parentId;
+        } else {
+          break;
+        }
+      }
+
+      if (depth >= 3) {
+        return NextResponse.json(
+          { error: "Максимальная глубина вложенности - 3 уровня" },
+          { status: 400 }
+        );
+      }
     }
 
     // Generate slug from name
