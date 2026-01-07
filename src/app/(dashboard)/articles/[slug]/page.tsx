@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArticleContent } from "@/components/ArticleContent";
 import { DeleteArticleButton } from "@/components/DeleteArticleButton";
+import { ShareButton } from "@/components/ShareButton";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -67,6 +68,7 @@ export default async function ArticlePage({ params }: Props) {
             </div>
           </div>
           <div className="flex gap-2">
+            <ShareButton articleId={article.id} />
             <Link
               href={`/articles/${article.slug}/edit`}
               className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
