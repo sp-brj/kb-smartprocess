@@ -18,17 +18,17 @@
 
 /* Тёмная тема */
 .dark {
-  --background: #1a1b1e;
-  --foreground: #e4e5e7;
-  --card: #25262b;
-  --card-foreground: #e4e5e7;
-  --muted: #2c2e33;
-  --muted-foreground: #909296;
-  --border: #373a40;
-  --primary: #228be6;
-  --primary-foreground: #ffffff;
-  --accent: #339af0;
-  --destructive: #fa5252;
+  --background: #0f1419;
+  --foreground: #f5f5f7;
+  --card: #1c1f26;
+  --card-foreground: #f5f5f7;
+  --muted: #2a2f3a;
+  --muted-foreground: #a8adb8;
+  --border: #3d4450;
+  --primary: #4dabf7;
+  --primary-foreground: #0f1419;
+  --accent: #74c0fc;
+  --destructive: #ff6b6b;
 }
 
 @theme inline {
