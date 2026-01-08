@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArticlesList } from "@/components/ArticlesList";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -16,6 +17,7 @@ export default async function FolderPage({ params }: PageProps) {
       articles: {
         include: {
           author: { select: { name: true, email: true } },
+          folder: { select: { name: true, slug: true } },
         },
         orderBy: { updatedAt: "desc" },
       },
@@ -30,6 +32,17 @@ export default async function FolderPage({ params }: PageProps) {
   if (!folder) {
     notFound();
   }
+
+  // Transform articles to match ArticlesList interface
+  const articlesForList = folder.articles.map((article) => ({
+    id: article.id,
+    title: article.title,
+    slug: article.slug,
+    status: article.status as "DRAFT" | "PUBLISHED",
+    updatedAt: article.updatedAt.toISOString(),
+    author: article.author,
+    folder: article.folder,
+  }));
 
   return (
     <div>
@@ -89,36 +102,7 @@ export default async function FolderPage({ params }: PageProps) {
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow divide-y">
-          {folder.articles.map((article) => (
-            <Link
-              key={article.id}
-              href={`/articles/${article.slug}`}
-              className="block p-4 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="font-medium text-gray-900">{article.title}</h2>
-                  <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                    <span>{article.author.name || article.author.email}</span>
-                    <span>
-                      {new Date(article.updatedAt).toLocaleDateString("ru-RU")}
-                    </span>
-                  </div>
-                </div>
-                <span
-                  className={`text-xs px-2 py-1 rounded ${
-                    article.status === "PUBLISHED"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-yellow-100 text-yellow-700"
-                  }`}
-                >
-                  {article.status === "PUBLISHED" ? "Опубликовано" : "Черновик"}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <ArticlesList initialArticles={articlesForList} />
       )}
     </div>
   );
