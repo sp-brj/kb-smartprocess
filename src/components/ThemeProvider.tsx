@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useSyncExternalStore } from "react";
+import { createContext, useContext, useEffect, useCallback, useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark" | "system";
 
@@ -12,63 +12,77 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// Custom storage for theme with event emitter
+let themeListeners: Array<() => void> = [];
+
+function emitThemeChange() {
+  themeListeners.forEach(listener => listener());
+}
+
+function subscribeToTheme(callback: () => void) {
+  themeListeners.push(callback);
+  // Also listen for storage events from other tabs
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === "theme") callback();
+  };
+  window.addEventListener("storage", handleStorage);
+  return () => {
+    themeListeners = themeListeners.filter(l => l !== callback);
+    window.removeEventListener("storage", handleStorage);
+  };
+}
+
 function getStoredTheme(): Theme {
   if (typeof window === "undefined") return "system";
   return (localStorage.getItem("theme") as Theme) || "system";
 }
 
-function subscribe(callback: () => void) {
-  window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
+function getResolvedTheme(theme: Theme): "light" | "dark" {
+  if (typeof window === "undefined") return "light";
+  if (theme === "system") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return theme === "dark" ? "dark" : "light";
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const storedTheme = useSyncExternalStore(
-    subscribe,
+  // Use useSyncExternalStore to sync with localStorage
+  const theme = useSyncExternalStore(
+    subscribeToTheme,
     getStoredTheme,
     () => "system" as Theme
   );
 
-  const [theme, setThemeState] = useState<Theme>(storedTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
+  const resolvedTheme = useSyncExternalStore(
+    subscribeToTheme,
+    () => getResolvedTheme(theme),
+    () => "light" as const
+  );
 
-  // Sync state with localStorage on mount (after hydration)
-  useEffect(() => {
-    const saved = localStorage.getItem("theme") as Theme;
-    if (saved && saved !== theme) {
-      setThemeState(saved);
-    }
-  }, []);
-
+  // Apply theme class to document
   useEffect(() => {
     const root = document.documentElement;
+    const isDark = getResolvedTheme(theme) === "dark";
 
-    function applyTheme(isDark: boolean) {
-      if (isDark) {
-        root.classList.add("dark");
-        setResolvedTheme("dark");
-      } else {
-        root.classList.remove("dark");
-        setResolvedTheme("light");
-      }
+    if (isDark) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
     }
 
+    // Listen for system theme changes when theme is "system"
     if (theme === "system") {
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      applyTheme(mediaQuery.matches);
-
-      const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
+      const handler = () => emitThemeChange();
       mediaQuery.addEventListener("change", handler);
       return () => mediaQuery.removeEventListener("change", handler);
-    } else {
-      applyTheme(theme === "dark");
     }
   }, [theme]);
 
-  function setTheme(newTheme: Theme) {
-    setThemeState(newTheme);
+  const setTheme = useCallback((newTheme: Theme) => {
     localStorage.setItem("theme", newTheme);
-  }
+    emitThemeChange();
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
