@@ -75,6 +75,37 @@ test("example", async ({ authenticatedPage }) => {
 - `ArticleViewPage` - просмотр статьи
 - `AdminUsersPage` - админ-панель пользователей
 
+## Функционал базы знаний
+
+### Wiki-ссылки
+- Синтаксис: `[[название статьи]]` или `[[статья|текст ссылки]]`
+- Автодополнение при вводе `[[` в редакторе
+- Панель обратных ссылок (BacklinksPanel) показывает какие статьи ссылаются на текущую
+- Битые ссылки подсвечиваются красным (класс `.wikilink-broken`)
+
+### Теги
+- TagSelector в редакторе для добавления тегов
+- Создание новых тегов "на лету"
+- TagCloud в сайдбаре с количеством статей
+- Страницы `/tags` (все теги) и `/tags/[slug]` (статьи по тегу)
+
+### История изменений
+- Автоматическое сохранение версий при каждом изменении
+- Кнопка "История" на странице статьи
+- VersionHistoryModal показывает список версий
+- VersionDiffViewer для визуального сравнения
+- Откат к любой предыдущей версии
+
+### API endpoints
+- `/api/articles/suggestions` - автодополнение wiki-ссылок
+- `/api/articles/[id]/backlinks` - обратные ссылки
+- `/api/articles/[id]/tags` - теги статьи (GET, PUT, POST)
+- `/api/articles/[id]/versions` - список версий
+- `/api/articles/[id]/versions/[versionId]` - конкретная версия
+- `/api/articles/[id]/versions/[versionId]/diff` - diff между версиями
+- `/api/articles/[id]/versions/[versionId]/revert` - откат
+- `/api/tags` - CRUD тегов
+
 ## Репозиторий
 
 GitHub: https://github.com/sp-brj/kb-smartprocess
