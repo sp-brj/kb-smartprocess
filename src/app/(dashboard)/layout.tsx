@@ -28,6 +28,7 @@ export default async function DashboardLayout({
             <Link
               href="/articles/new"
               className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+              data-testid="new-article-btn"
             >
               + Новая статья
             </Link>
@@ -35,11 +36,12 @@ export default async function DashboardLayout({
               <Link
                 href="/admin/users"
                 className="text-sm text-gray-600 hover:text-gray-900"
+                data-testid="admin-link"
               >
                 Пользователи
               </Link>
             )}
-            <span className="text-sm text-gray-600">{session?.user?.email}</span>
+            <span className="text-sm text-gray-600" data-testid="user-email">{session?.user?.email}</span>
             <SignOutButton />
           </div>
         </header>

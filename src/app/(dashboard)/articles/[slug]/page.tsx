@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArticleContent } from "@/components/ArticleContent";
 import { DeleteArticleButton } from "@/components/DeleteArticleButton";
 import { ShareButton } from "@/components/ShareButton";
+import { BacklinksPanel } from "@/components/BacklinksPanel";
+import { HistoryButton } from "@/components/HistoryButton";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -28,8 +30,8 @@ export default async function ArticlePage({ params }: Props) {
   return (
     <div className="max-w-4xl">
       {/* Breadcrumbs */}
-      <nav className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-        <Link href="/articles" className="hover:text-gray-700">
+      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <Link href="/articles" className="hover:text-foreground">
           Статьи
         </Link>
         {article.folder && (
@@ -37,22 +39,22 @@ export default async function ArticlePage({ params }: Props) {
             <span>/</span>
             <Link
               href={`/folders/${article.folder.slug}`}
-              className="hover:text-gray-700"
+              className="hover:text-foreground"
             >
               {article.folder.name}
             </Link>
           </>
         )}
         <span>/</span>
-        <span className="text-gray-700">{article.title}</span>
+        <span className="text-foreground">{article.title}</span>
       </nav>
 
       {/* Header */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
+      <div className="bg-card rounded-lg shadow p-6 mb-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{article.title}</h1>
-            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+            <h1 className="text-3xl font-bold text-foreground">{article.title}</h1>
+            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
               <span>{article.author.name || article.author.email}</span>
               <span>
                 Обновлено: {new Date(article.updatedAt).toLocaleDateString("ru-RU")}
@@ -69,6 +71,7 @@ export default async function ArticlePage({ params }: Props) {
             </div>
           </div>
           <div className="flex gap-2">
+            <HistoryButton articleId={article.id} articleSlug={article.slug} />
             <ShareButton articleId={article.id} />
             <Link
               href={`/articles/${article.slug}/edit`}
@@ -82,8 +85,9 @@ export default async function ArticlePage({ params }: Props) {
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-card rounded-lg shadow p-6">
         <ArticleContent content={article.content} />
+        <BacklinksPanel articleId={article.id} />
       </div>
     </div>
   );

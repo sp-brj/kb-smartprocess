@@ -93,6 +93,16 @@ async function cleanupTestData() {
             contains: "Article to Delete",
           },
         },
+        {
+          title: {
+            contains: "Drag Test Article",
+          },
+        },
+        {
+          title: {
+            contains: "In Folder",
+          },
+        },
       ],
     },
     select: {
@@ -135,6 +145,56 @@ async function cleanupTestData() {
         {
           name: {
             contains: "Тестовая Папка",
+          },
+        },
+        {
+          name: {
+            contains: "Depth1",
+          },
+        },
+        {
+          name: {
+            contains: "Depth2",
+          },
+        },
+        {
+          name: {
+            contains: "Depth3",
+          },
+        },
+        {
+          name: {
+            contains: "Drag From",
+          },
+        },
+        {
+          name: {
+            contains: "Expand Test",
+          },
+        },
+        {
+          name: {
+            contains: "Parent ",
+          },
+        },
+        {
+          name: {
+            contains: "Child ",
+          },
+        },
+        {
+          name: {
+            contains: "L1 ",
+          },
+        },
+        {
+          name: {
+            contains: "L2 ",
+          },
+        },
+        {
+          name: {
+            contains: "Collapse Child",
           },
         },
       ],

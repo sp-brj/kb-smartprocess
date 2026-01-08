@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./e2e/specs",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -17,6 +17,16 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    // Firefox and mobile projects commented out - uncomment after installing browsers:
+    // npx playwright install firefox webkit
+    // {
+    //   name: "firefox",
+    //   use: { ...devices["Desktop Firefox"] },
+    // },
+    // {
+    //   name: "mobile",
+    //   use: { ...devices["iPhone 13"] },
+    // },
   ],
   webServer: {
     command: "npm run dev",

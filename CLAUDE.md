@@ -11,10 +11,11 @@
 
 2. **Запустить E2E тесты** через Playwright:
    ```bash
-   npx playwright test
+   npx playwright test --project=chromium
    ```
    - Убедиться что все тесты проходят
    - При необходимости исправить код или обновить тесты
+   - Для быстрых проверок можно запускать только chromium проект
 
 3. **Очистить тестовые данные** после тестов:
    ```bash
@@ -42,6 +43,7 @@
   - Функции загрузки данных объявлять внутри `useEffect`
   - Для перезагрузки данных использовать state-триггер (`reloadCount`)
   - Не вызывать setState синхронно в эффектах
+- Добавлять `data-testid` атрибуты для элементов UI (используются в тестах)
 
 ## Структура проекта
 
@@ -49,6 +51,29 @@
 - `/src/app/` - Next.js App Router страницы и API
 - `/prisma/` - схема базы данных
 - `/e2e/` - Playwright тесты
+  - `/e2e/pages/` - Page Objects (паттерн POM)
+  - `/e2e/fixtures/` - Playwright fixtures для авторизации и данных
+  - `/e2e/specs/` - тестовые спецификации по категориям
+
+## E2E тесты
+
+Тесты используют **Page Object Model** для удобного взаимодействия с UI:
+
+```typescript
+import { test, expect } from "../../fixtures/test";
+
+test("example", async ({ authenticatedPage }) => {
+  await authenticatedPage.createFolder("My Folder");
+  await authenticatedPage.expectFolderExists("my-folder");
+});
+```
+
+Основные Page Objects:
+- `LoginPage` - страница логина
+- `DashboardPage` - главная страница, сайдбар, тема
+- `ArticleEditorPage` - создание/редактирование статей
+- `ArticleViewPage` - просмотр статьи
+- `AdminUsersPage` - админ-панель пользователей
 
 ## Репозиторий
 

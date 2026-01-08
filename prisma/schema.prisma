@@ -23,7 +23,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  articles Article[]
+  articles        Article[]
+  articleVersions ArticleVersion[] @relation("VersionAuthor")
 }
 
 enum Role {
@@ -61,7 +62,11 @@ model Article {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  shareLinks ShareLink[]
+  shareLinks    ShareLink[]
+  outgoingLinks ArticleLink[]    @relation("OutgoingLinks")
+  incomingLinks ArticleLink[]    @relation("IncomingLinks")
+  tags          ArticleTag[]
+  versions      ArticleVersion[]
 }
 
 enum Status {
@@ -81,4 +86,83 @@ model ShareLink {
   isActive  Boolean   @default(true)
   expiresAt DateTime?
   createdAt DateTime  @default(now())
+}
+
+// =====================
+// WIKI-LINKS
+// =====================
+
+model ArticleLink {
+  id          String   @id @default(cuid())
+  sourceId    String
+  targetId    String?
+  targetTitle String
+  createdAt   DateTime @default(now())
+
+  source Article  @relation("OutgoingLinks", fields: [sourceId], references: [id], onDelete: Cascade)
+  target Article? @relation("IncomingLinks", fields: [targetId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceId, targetTitle])
+  @@index([targetId])
+  @@index([targetTitle])
+}
+
+// =====================
+// TAGS
+// =====================
+
+model Tag {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  slug      String       @unique
+  color     String?      @default("#6B7280")
+  articles  ArticleTag[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([name])
+  @@index([slug])
+}
+
+model ArticleTag {
+  id        String   @id @default(cuid())
+  articleId String
+  tagId     String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([articleId, tagId])
+  @@index([articleId])
+  @@index([tagId])
+}
+
+// =====================
+// VERSION HISTORY
+// =====================
+
+model ArticleVersion {
+  id            String     @id @default(cuid())
+  version       Int
+  title         String
+  content       String     @db.Text
+  status        Status
+  changeType    ChangeType @default(UPDATE)
+  changeSummary String?
+  articleId     String
+  authorId      String
+  createdAt     DateTime   @default(now())
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author  User    @relation("VersionAuthor", fields: [authorId], references: [id])
+
+  @@unique([articleId, version])
+  @@index([articleId])
+  @@index([authorId])
+}
+
+enum ChangeType {
+  CREATE
+  UPDATE
+  REVERT
 }

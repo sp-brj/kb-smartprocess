@@ -71,3 +71,42 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #4a4d54;
 }
+
+/* Wiki-ссылки */
+.wikilink {
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+.wikilink:hover {
+  color: var(--accent);
+  text-decoration-style: solid;
+}
+
+.wikilink-broken {
+  color: var(--destructive);
+}
+
+.wikilink-broken:hover {
+  color: #dc2626;
+}
+
+/* Теги */
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--muted);
+  color: var(--foreground);
+  transition: background 0.15s ease;
+}
+
+.tag-badge:hover {
+  background: var(--border);
+}

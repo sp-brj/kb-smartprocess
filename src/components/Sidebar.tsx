@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
+import { TagCloud } from "./TagCloud";
 
 interface Folder {
   id: string;
@@ -91,8 +92,8 @@ export function Sidebar() {
         });
 
         if (res.ok) {
-          router.refresh();
-          reloadFolders();
+          // Full page reload to update Server Components data
+          window.location.reload();
         }
       }
     } catch (error) {
@@ -134,13 +135,14 @@ export function Sidebar() {
               setCreatingInFolderId(null);
             }}
             className="text-blue-600 hover:text-blue-700 text-sm"
+            data-testid="create-folder-btn"
           >
             + Новая
           </button>
         </div>
 
         {isCreating && !creatingInFolderId && (
-          <form onSubmit={(e) => createFolder(e, null)} className="mb-4">
+          <form onSubmit={(e) => createFolder(e, null)} className="mb-4" data-testid="create-folder-form">
             <input
               type="text"
               value={newFolderName}
@@ -148,6 +150,7 @@ export function Sidebar() {
               placeholder="Название папки"
               className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
               autoFocus
+              data-testid="folder-name-input"
             />
             <div className="flex gap-2 mt-2">
               <button
@@ -173,6 +176,7 @@ export function Sidebar() {
             onDrop={(e) => handleDrop(e, null)}
             onDragOver={handleDragOver}
             className="transition-colors rounded"
+            data-testid="all-articles-dropzone"
           >
             <Link
               href="/articles"
@@ -181,6 +185,7 @@ export function Sidebar() {
                   ? "bg-blue-50 text-blue-700"
                   : "text-gray-600 hover:bg-gray-50"
               }`}
+              data-testid="all-articles-link"
             >
               Все статьи
             </Link>
@@ -207,6 +212,7 @@ export function Sidebar() {
           ))}
         </nav>
       </div>
+      <TagCloud />
       <div className="p-4 border-t border-border">
         <ThemeToggle />
       </div>
@@ -268,7 +274,7 @@ function FolderItem({
   }
 
   return (
-    <div style={{ marginLeft: depth > 0 ? `${depth * 12}px` : 0 }}>
+    <div style={{ marginLeft: depth > 0 ? `${depth * 12}px` : 0 }} data-testid={`folder-item-${folder.slug}`}>
       <div
         onDrop={handleLocalDrop}
         onDragOver={handleLocalDragOver}
@@ -276,6 +282,7 @@ function FolderItem({
         className={`rounded transition-colors ${
           isDragOver ? "bg-blue-100 ring-2 ring-blue-400" : ""
         }`}
+        data-testid={`folder-dropzone-${folder.slug}`}
       >
         <div className="flex items-center group">
           {/* Expand/Collapse button */}
@@ -283,6 +290,7 @@ function FolderItem({
             <button
               onClick={() => toggleFolder(folder.id)}
               className="p-1 hover:bg-gray-100 rounded"
+              data-testid={`folder-toggle-${folder.slug}`}
             >
               <svg
                 className={`w-3 h-3 text-gray-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
@@ -302,6 +310,7 @@ function FolderItem({
             className={`flex-1 flex items-center justify-between px-2 py-2 rounded text-sm ${
               isActive ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-50"
             }`}
+            data-testid={`folder-link-${folder.slug}`}
           >
             <span className="flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -325,6 +334,7 @@ function FolderItem({
               onClick={() => startCreatingSubfolder(folder.id)}
               className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-blue-600 transition-opacity"
               title="Добавить подпапку"
+              data-testid={`add-subfolder-${folder.slug}`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -339,6 +349,7 @@ function FolderItem({
         <form
           onSubmit={(e) => createFolder(e, folder.id)}
           className="ml-5 mt-1 mb-2"
+          data-testid={`subfolder-form-${folder.slug}`}
         >
           <input
             type="text"
@@ -347,6 +358,7 @@ function FolderItem({
             placeholder="Название подпапки"
             className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
             autoFocus
+            data-testid={`subfolder-name-input-${folder.slug}`}
           />
           <div className="flex gap-2 mt-1">
             <button

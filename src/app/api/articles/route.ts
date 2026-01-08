@@ -2,23 +2,81 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { generateSlug, extractWikilinks } from "@/lib/wikilinks";
 
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[а-яё]/g, (char) => {
-      const map: Record<string, string> = {
-        а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "yo",
-        ж: "zh", з: "z", и: "i", й: "y", к: "k", л: "l", м: "m",
-        н: "n", о: "o", п: "p", р: "r", с: "s", т: "t", у: "u",
-        ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sch",
-        ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya",
-      };
-      return map[char] || char;
-    })
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .substring(0, 100);
+/**
+ * Создает связи ArticleLink для wiki-ссылок в контенте статьи
+ */
+async function createArticleLinks(articleId: string, content: string) {
+  const wikilinks = extractWikilinks(content);
+  if (wikilinks.length === 0) return;
+
+  // Найти существующие статьи по заголовкам
+  const titles = wikilinks.map((l) => l.title);
+  const existingArticles = await prisma.article.findMany({
+    where: {
+      OR: [
+        { title: { in: titles, mode: "insensitive" } },
+        { slug: { in: titles.map((t) => generateSlug(t)) } },
+      ],
+    },
+    select: { id: true, title: true, slug: true },
+  });
+
+  // Создать map для быстрого поиска
+  const articleMap = new Map<string, string>();
+  existingArticles.forEach((a) => {
+    articleMap.set(a.title.toLowerCase(), a.id);
+    articleMap.set(a.slug, a.id);
+  });
+
+  // Создать связи
+  const linkData = wikilinks.map((link) => {
+    const targetId =
+      articleMap.get(link.title.toLowerCase()) ||
+      articleMap.get(generateSlug(link.title)) ||
+      null;
+
+    return {
+      sourceId: articleId,
+      targetId,
+      targetTitle: link.title,
+    };
+  });
+
+  await prisma.articleLink.createMany({
+    data: linkData,
+    skipDuplicates: true,
+  });
+}
+
+/**
+ * Обновляет связи ArticleLink при изменении контента
+ */
+async function updateArticleLinks(articleId: string, content: string) {
+  // Удаляем старые ссылки
+  await prisma.articleLink.deleteMany({ where: { sourceId: articleId } });
+  // Создаем новые
+  await createArticleLinks(articleId, content);
+}
+
+/**
+ * Обновляет входящие ссылки когда создается новая статья
+ * (связывает "битые" ссылки с новой статьей)
+ */
+async function linkOrphanedReferences(articleId: string, title: string) {
+  const slug = generateSlug(title);
+
+  await prisma.articleLink.updateMany({
+    where: {
+      targetId: null,
+      OR: [
+        { targetTitle: { equals: title, mode: "insensitive" } },
+        { targetTitle: { equals: slug, mode: "insensitive" } },
+      ],
+    },
+    data: { targetId: articleId },
+  });
 }
 
 // GET /api/articles - list articles
@@ -41,11 +99,20 @@ export async function GET(request: NextRequest) {
     include: {
       author: { select: { id: true, name: true, email: true } },
       folder: { select: { id: true, name: true, slug: true } },
+      tags: {
+        include: { tag: true },
+      },
     },
     orderBy: { updatedAt: "desc" },
   });
 
-  return NextResponse.json(articles);
+  // Преобразуем теги для удобства фронтенда
+  const articlesWithTags = articles.map((article) => ({
+    ...article,
+    tags: article.tags.map((at) => at.tag),
+  }));
+
+  return NextResponse.json(articlesWithTags);
 }
 
 // POST /api/articles - create article
@@ -69,22 +136,58 @@ export async function POST(request: NextRequest) {
     const existingArticle = await prisma.article.findUnique({ where: { slug: baseSlug } });
     const slug = existingArticle ? `${baseSlug}-${Date.now()}` : baseSlug;
 
-    const article = await prisma.article.create({
-      data: {
-        title,
-        content: content || "",
-        slug,
-        status: status || "DRAFT",
-        folderId: folderId || null,
-        authorId: session.user.id,
-      },
-      include: {
-        author: { select: { id: true, name: true, email: true } },
-        folder: { select: { id: true, name: true, slug: true } },
-      },
+    const articleContent = content || "";
+    const articleStatus = status || "DRAFT";
+
+    // Транзакция: создаем статью + первую версию
+    const article = await prisma.$transaction(async (tx) => {
+      const newArticle = await tx.article.create({
+        data: {
+          title,
+          content: articleContent,
+          slug,
+          status: articleStatus,
+          folderId: folderId || null,
+          authorId: session.user.id,
+        },
+        include: {
+          author: { select: { id: true, name: true, email: true } },
+          folder: { select: { id: true, name: true, slug: true } },
+          tags: { include: { tag: true } },
+        },
+      });
+
+      // Создаем первую версию
+      await tx.articleVersion.create({
+        data: {
+          version: 1,
+          title: newArticle.title,
+          content: newArticle.content,
+          status: newArticle.status,
+          changeType: "CREATE",
+          articleId: newArticle.id,
+          authorId: session.user.id,
+        },
+      });
+
+      return newArticle;
     });
 
-    return NextResponse.json(article, { status: 201 });
+    // Создаем wiki-ссылки (после транзакции)
+    if (articleContent) {
+      await createArticleLinks(article.id, articleContent);
+    }
+
+    // Связываем "битые" ссылки из других статей
+    await linkOrphanedReferences(article.id, title);
+
+    // Преобразуем теги
+    const articleWithTags = {
+      ...article,
+      tags: article.tags.map((at) => at.tag),
+    };
+
+    return NextResponse.json(articleWithTags, { status: 201 });
   } catch (error) {
     console.error("Create article error:", error);
     return NextResponse.json({ error: "Ошибка создания статьи" }, { status: 500 });

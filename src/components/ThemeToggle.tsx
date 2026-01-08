@@ -6,7 +6,7 @@ export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
+    <div className="flex items-center gap-1 p-1 bg-muted rounded-lg" data-testid="theme-toggle" data-current-theme={theme}>
       <button
         onClick={() => setTheme("light")}
         className={`p-2 rounded-md transition-colors ${
@@ -15,6 +15,7 @@ export function ThemeToggle() {
             : "text-muted-foreground hover:text-foreground"
         }`}
         title="Светлая тема"
+        data-testid="theme-light-btn"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -33,6 +34,7 @@ export function ThemeToggle() {
             : "text-muted-foreground hover:text-foreground"
         }`}
         title="Системная тема"
+        data-testid="theme-system-btn"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -51,6 +53,7 @@ export function ThemeToggle() {
             : "text-muted-foreground hover:text-foreground"
         }`}
         title="Тёмная тема"
+        data-testid="theme-dark-btn"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
