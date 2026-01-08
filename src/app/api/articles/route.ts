@@ -51,16 +51,6 @@ async function createArticleLinks(articleId: string, content: string) {
 }
 
 /**
- * Обновляет связи ArticleLink при изменении контента
- */
-async function updateArticleLinks(articleId: string, content: string) {
-  // Удаляем старые ссылки
-  await prisma.articleLink.deleteMany({ where: { sourceId: articleId } });
-  // Создаем новые
-  await createArticleLinks(articleId, content);
-}
-
-/**
  * Обновляет входящие ссылки когда создается новая статья
  * (связывает "битые" ссылки с новой статьей)
  */

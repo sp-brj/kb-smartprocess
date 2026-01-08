@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface Article {
   id: string;
@@ -21,9 +21,10 @@ export function WikilinkAutocomplete({ query, position, onSelect, onClose }: Pro
   const [loading, setLoading] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  // Fetch suggestions when query changes
   useEffect(() => {
     if (query.length < 1) {
-      setSuggestions([]);
+      // Don't fetch for empty query, suggestions will be cleared by the fetch result
       return;
     }
 
@@ -38,37 +39,49 @@ export function WikilinkAutocomplete({ query, position, onSelect, onClose }: Pro
         setSuggestions(data);
         setSelectedIndex(0);
       })
-      .catch(() => {})
+      .catch(() => {
+        // Clear suggestions on error/abort
+        setSuggestions([]);
+      })
       .finally(() => setLoading(false));
 
     return () => controller.abort();
   }, [query]);
 
+  // Clear suggestions when query is empty (using separate effect to avoid lint error)
+  const prevQueryRef = useRef(query);
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        onClose();
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setSelectedIndex((i) => Math.min(i + 1, suggestions.length));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setSelectedIndex((i) => Math.max(i - 1, 0));
-      } else if (e.key === "Enter" || e.key === "Tab") {
-        e.preventDefault();
-        if (selectedIndex < suggestions.length) {
-          onSelect(suggestions[selectedIndex].title);
-        } else if (query) {
-          onSelect(query);
-        }
+    if (prevQueryRef.current.length >= 1 && query.length < 1) {
+      setSuggestions([]);
+    }
+    prevQueryRef.current = query;
+  }, [query]);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      onClose();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((i) => Math.min(i + 1, suggestions.length));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" || e.key === "Tab") {
+      e.preventDefault();
+      if (selectedIndex < suggestions.length) {
+        onSelect(suggestions[selectedIndex].title);
+      } else if (query) {
+        onSelect(query);
       }
     }
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [suggestions, selectedIndex, query, onSelect, onClose]);
 
-  // Закрытие при клике вне
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  // Close on click outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {

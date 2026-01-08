@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { TagCloud } from "./TagCloud";
 
@@ -22,7 +22,6 @@ export function Sidebar() {
   const [creatingInFolderId, setCreatingInFolderId] = useState<string | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const pathname = usePathname();
-  const router = useRouter();
 
   const [reloadCount, setReloadCount] = useState(0);
 
@@ -125,10 +124,6 @@ export function Sidebar() {
     e.dataTransfer.dropEffect = "move";
   }
 
-  function handleDragEnter(e: React.DragEvent) {
-    e.preventDefault();
-    console.log("Drag enter");
-  }
 
   // Build tree from flat list
   const rootFolders = folders.filter((f) => !f.parentId);

@@ -37,7 +37,10 @@ export class ArticleEditorPage extends BasePage {
 
   async submit() {
     await this.submitButton.click();
-    await this.page.waitForURL(/\/articles\/[^/]+$/);
+    // Wait for navigation to article view page (not /new or /edit)
+    await this.page.waitForURL(/\/articles\/[^/]+$/, { timeout: 15000 });
+    // Wait for page to fully load - article view has h1 with text-3xl class
+    await this.page.waitForSelector("h1.text-3xl", { timeout: 10000 });
   }
 
   async createArticle(title: string, content: string) {

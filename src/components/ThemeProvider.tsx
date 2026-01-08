@@ -32,6 +32,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(storedTheme);
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
 
+  // Sync state with localStorage on mount (after hydration)
+  useEffect(() => {
+    const saved = localStorage.getItem("theme") as Theme;
+    if (saved && saved !== theme) {
+      setThemeState(saved);
+    }
+  }, []);
+
   useEffect(() => {
     const root = document.documentElement;
 

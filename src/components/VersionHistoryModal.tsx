@@ -23,7 +23,8 @@ interface Props {
   onClose: () => void;
 }
 
-export function VersionHistoryModal({ articleId, articleSlug, onClose }: Props) {
+export function VersionHistoryModal({ articleId, onClose }: Props) {
+  // articleSlug reserved for future use (e.g., navigation to version)
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
