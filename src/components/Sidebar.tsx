@@ -82,18 +82,37 @@ export function Sidebar() {
     e.preventDefault();
     e.stopPropagation();
 
+    console.log("Drop event on folder:", folderId);
+    console.log("DataTransfer types:", e.dataTransfer.types);
+
     try {
-      const data = JSON.parse(e.dataTransfer.getData("application/json"));
+      const jsonData = e.dataTransfer.getData("application/json");
+      console.log("JSON data:", jsonData);
+
+      if (!jsonData) {
+        console.log("No JSON data found");
+        return;
+      }
+
+      const data = JSON.parse(jsonData);
+      console.log("Parsed data:", data);
+
       if (data.type === "article") {
+        console.log("Moving article", data.id, "to folder", folderId);
         const res = await fetch(`/api/articles/${data.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ folderId }),
         });
 
+        console.log("API response status:", res.status);
+
         if (res.ok) {
           // Full page reload to update Server Components data
           window.location.reload();
+        } else {
+          const error = await res.text();
+          console.error("API error:", error);
         }
       }
     } catch (error) {
@@ -104,6 +123,11 @@ export function Sidebar() {
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+  }
+
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    console.log("Drag enter");
   }
 
   // Build tree from flat list

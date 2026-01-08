@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface Article {
@@ -19,37 +19,38 @@ interface ArticlesListProps {
 
 export function ArticlesList({ initialArticles }: ArticlesListProps) {
   const [articles] = useState(initialArticles);
-  const [draggedArticle, setDraggedArticle] = useState<Article | null>(null);
-  const isDraggingRef = useRef(false);
+  const [draggedArticleId, setDraggedArticleId] = useState<string | null>(null);
   const router = useRouter();
 
-  function handleDragStart(e: React.DragEvent, article: Article) {
-    isDraggingRef.current = true;
-    setDraggedArticle(article);
+  function handleDragStart(e: React.DragEvent<HTMLDivElement>, article: Article) {
+    console.log("Drag start:", article.title);
+    setDraggedArticleId(article.id);
+
+    // Set drag data
     e.dataTransfer.setData("application/json", JSON.stringify({
       type: "article",
       id: article.id,
       title: article.title,
     }));
+    e.dataTransfer.setData("text/plain", article.title);
     e.dataTransfer.effectAllowed = "move";
+
+    // Set drag image
+    if (e.currentTarget) {
+      e.dataTransfer.setDragImage(e.currentTarget, 20, 20);
+    }
   }
 
   function handleDragEnd() {
-    setDraggedArticle(null);
-    // Reset dragging state after a short delay to allow click to be ignored
-    setTimeout(() => {
-      isDraggingRef.current = false;
-    }, 100);
+    console.log("Drag end");
+    setDraggedArticleId(null);
   }
 
-  function handleClick(e: React.MouseEvent, slug: string) {
-    // Prevent navigation if we were just dragging
-    if (isDraggingRef.current) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
+  function handleClick(slug: string) {
+    // Only navigate if not dragging
+    if (!draggedArticleId) {
+      router.push(`/articles/${slug}`);
     }
-    router.push(`/articles/${slug}`);
   }
 
   return (
@@ -57,23 +58,20 @@ export function ArticlesList({ initialArticles }: ArticlesListProps) {
       {articles.map((article) => (
         <div
           key={article.id}
-          draggable
+          draggable={true}
           onDragStart={(e) => handleDragStart(e, article)}
           onDragEnd={handleDragEnd}
-          onClick={(e) => handleClick(e, article.slug)}
-          className={`block p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
-            draggedArticle?.id === article.id ? "opacity-50 cursor-grabbing" : ""
+          onClick={() => handleClick(article.slug)}
+          className={`block p-4 hover:bg-gray-50 transition-colors cursor-grab active:cursor-grabbing select-none ${
+            draggedArticleId === article.id ? "opacity-50 bg-blue-50" : ""
           }`}
           data-testid={`article-item-${article.slug}`}
         >
-          <div
-            className="block"
-            data-testid={`article-link-${article.slug}`}
-          >
+          <div data-testid={`article-link-${article.slug}`}>
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3">
                 <svg
-                  className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0 cursor-grab"
+                  className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
