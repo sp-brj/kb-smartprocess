@@ -86,13 +86,6 @@ function useSuggestions(query: string) {
 
 export function WikilinkAutocomplete({ query, position, onSelect, onClose }: Props) {
   const { suggestions, loading, forQuery } = useSuggestions(query);
-  const [selectedState, dispatchSelected] = useReducer(
-    (_: number, action: { type: "SET"; value: number } | { type: "RESET" }) => {
-      if (action.type === "RESET") return 0;
-      return action.value;
-    },
-    0
-  );
   const ref = useRef<HTMLDivElement>(null);
 
   // Compute suggestions to show - only show if query matches
@@ -103,29 +96,42 @@ export function WikilinkAutocomplete({ query, position, onSelect, onClose }: Pro
   // Show loading if we're fetching or query changed but fetch hasn't caught up
   const showLoading = loading || (query.length >= 1 && forQuery !== query);
 
-  // Track previous length to reset on change
-  const prevLengthRef = useRef(displaySuggestions.length);
-  const selectedIndex = prevLengthRef.current !== displaySuggestions.length ? 0 : selectedState;
-  prevLengthRef.current = displaySuggestions.length;
+  // Create a key based on suggestions length to reset selectedIndex
+  const suggestionsKey = displaySuggestions.length;
+
+  // Use reducer with key to auto-reset when suggestions change
+  const [selectedIndex, dispatchSelected] = useReducer(
+    (state: { index: number; key: number }, action: { type: "SET"; value: number; key: number } | { type: "INIT"; key: number }) => {
+      if (action.type === "INIT" || action.key !== state.key) {
+        return { index: 0, key: action.key };
+      }
+      return { index: action.value, key: action.key };
+    },
+    { index: 0, key: suggestionsKey },
+    () => ({ index: 0, key: suggestionsKey })
+  );
+
+  // Get current index, reset if key changed
+  const currentIndex = selectedIndex.key !== suggestionsKey ? 0 : selectedIndex.index;
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") {
       onClose();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
-      dispatchSelected({ type: "SET", value: Math.min(selectedIndex + 1, displaySuggestions.length) });
+      dispatchSelected({ type: "SET", value: Math.min(currentIndex + 1, displaySuggestions.length), key: suggestionsKey });
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      dispatchSelected({ type: "SET", value: Math.max(selectedIndex - 1, 0) });
+      dispatchSelected({ type: "SET", value: Math.max(currentIndex - 1, 0), key: suggestionsKey });
     } else if (e.key === "Enter" || e.key === "Tab") {
       e.preventDefault();
-      if (selectedIndex < displaySuggestions.length) {
-        onSelect(displaySuggestions[selectedIndex].title);
+      if (currentIndex < displaySuggestions.length) {
+        onSelect(displaySuggestions[currentIndex].title);
       } else if (query) {
         onSelect(query);
       }
     }
-  }, [displaySuggestions, selectedIndex, query, onSelect, onClose]);
+  }, [displaySuggestions, currentIndex, suggestionsKey, query, onSelect, onClose]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
@@ -158,7 +164,7 @@ export function WikilinkAutocomplete({ query, position, onSelect, onClose }: Pro
         <button
           onClick={() => onSelect(query)}
           className={`w-full px-3 py-2 text-left text-sm hover:bg-muted ${
-            selectedIndex === 0 ? "bg-muted" : ""
+            currentIndex === 0 ? "bg-muted" : ""
           }`}
         >
           <span className="text-primary">Создать:</span> {query}
@@ -170,7 +176,7 @@ export function WikilinkAutocomplete({ query, position, onSelect, onClose }: Pro
           key={s.id}
           onClick={() => onSelect(s.title)}
           className={`w-full px-3 py-2 text-left text-sm hover:bg-muted ${
-            i === selectedIndex ? "bg-muted" : ""
+            i === currentIndex ? "bg-muted" : ""
           }`}
         >
           {s.title}
@@ -181,7 +187,7 @@ export function WikilinkAutocomplete({ query, position, onSelect, onClose }: Pro
         <button
           onClick={() => onSelect(query)}
           className={`w-full px-3 py-2 text-left text-sm hover:bg-muted border-t border-border ${
-            selectedIndex === displaySuggestions.length ? "bg-muted" : ""
+            currentIndex === displaySuggestions.length ? "bg-muted" : ""
           }`}
         >
           <span className="text-primary">Создать:</span> {query}
