@@ -29,8 +29,6 @@ function useSuggestions(query: string) {
 
   useEffect(() => {
     if (query.length < 1) {
-      // Only update if we have a different state
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing state on empty query is intentional
       setState(prev =>
         prev.loading || prev.suggestions.length > 0 || prev.forQuery !== ""
           ? { suggestions: [], loading: false, forQuery: "" }
@@ -39,8 +37,6 @@ function useSuggestions(query: string) {
       return;
     }
 
-    // Set loading state
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- setting loading before async fetch is standard pattern
     setState(prev => ({ ...prev, loading: true, forQuery: query }));
 
     const controller = new AbortController();
@@ -51,13 +47,11 @@ function useSuggestions(query: string) {
       .then((res) => res.json())
       .then((data) => {
         if (!controller.signal.aborted) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- async callback from fetch
           setState({ suggestions: data, loading: false, forQuery: query });
         }
       })
       .catch(() => {
         if (!controller.signal.aborted) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- async callback from fetch
           setState({ suggestions: [], loading: false, forQuery: query });
         }
       });
@@ -119,7 +113,6 @@ export function WikilinkAutocomplete({ query, position, onSelect, onClose }: Pro
 
   // Reset selected index when displaySuggestions changes
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting index on suggestions change is intentional
     setSelectedIndex(0);
   }, [displaySuggestions.length]);
 
