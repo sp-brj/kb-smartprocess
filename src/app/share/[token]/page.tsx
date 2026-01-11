@@ -22,12 +22,12 @@ export default async function SharedArticlePage({ params }: Props) {
 
   if (!shareLink.isActive) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
             Ссылка недействительна
           </h1>
-          <p className="text-gray-600">Эта ссылка была отозвана автором.</p>
+          <p className="text-muted-foreground">Эта ссылка была отозвана автором.</p>
         </div>
       </div>
     );
@@ -35,12 +35,12 @@ export default async function SharedArticlePage({ params }: Props) {
 
   if (shareLink.expiresAt && shareLink.expiresAt < new Date()) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
             Срок действия ссылки истёк
           </h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Запросите у автора новую ссылку для доступа.
           </p>
         </div>
@@ -51,14 +51,14 @@ export default async function SharedArticlePage({ params }: Props) {
   const article = shareLink.article;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto py-8 px-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-          <header className="mb-8 pb-6 border-b border-gray-100">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-8">
+          <header className="mb-8 pb-6 border-b border-border">
+            <h1 className="text-3xl font-bold text-foreground mb-2">
               {article.title}
             </h1>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Обновлено:{" "}
               {new Date(article.updatedAt).toLocaleDateString("ru-RU", {
                 day: "numeric",
@@ -70,8 +70,8 @@ export default async function SharedArticlePage({ params }: Props) {
 
           <ArticleContent content={article.content} />
 
-          <footer className="mt-12 pt-6 border-t border-gray-100">
-            <p className="text-xs text-gray-400 text-center">
+          <footer className="mt-12 pt-6 border-t border-border">
+            <p className="text-xs text-muted-foreground text-center">
               Эта статья опубликована через{" "}
               <span className="font-medium">Smart Process</span> База Знаний
             </p>

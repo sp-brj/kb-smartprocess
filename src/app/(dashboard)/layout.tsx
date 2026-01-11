@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { Sidebar } from "@/components/Sidebar";
+import { ResizableSidebar } from "@/components/ResizableSidebar";
 import { SignOutButton } from "@/components/SignOutButton";
 import { SearchBox } from "@/components/SearchBox";
 import Link from "next/link";
@@ -13,12 +13,12 @@ export default async function DashboardLayout({
   const session = await getServerSession(authOptions);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar />
+    <div className="min-h-screen bg-background flex">
+      <ResizableSidebar />
 
       <div className="flex-1 flex flex-col">
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center gap-4">
-          <Link href="/" className="text-xl font-semibold text-gray-900 shrink-0">
+        <header className="bg-card border-b border-border px-6 py-4 flex justify-between items-center gap-4">
+          <Link href="/" className="text-xl font-semibold text-foreground shrink-0">
             База знаний
           </Link>
           <div className="flex-1 max-w-md">
@@ -27,7 +27,7 @@ export default async function DashboardLayout({
           <div className="flex items-center gap-4 shrink-0">
             <Link
               href="/articles/new"
-              className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded text-sm hover:bg-accent"
               data-testid="new-article-btn"
             >
               + Новая статья
@@ -35,13 +35,13 @@ export default async function DashboardLayout({
             {session?.user?.role === "ADMIN" && (
               <Link
                 href="/admin/users"
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="text-sm text-muted-foreground hover:text-foreground"
                 data-testid="admin-link"
               >
                 Пользователи
               </Link>
             )}
-            <span className="text-sm text-gray-600" data-testid="user-email">{session?.user?.email}</span>
+            <span className="text-sm text-muted-foreground" data-testid="user-email">{session?.user?.email}</span>
             <SignOutButton />
           </div>
         </header>

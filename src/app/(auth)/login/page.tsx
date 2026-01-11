@@ -45,20 +45,20 @@ function LoginForm() {
   return (
     <form className="mt-8 space-y-6" onSubmit={handleSubmit} data-testid="login-form">
       {registered && (
-        <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded">
+        <div className="bg-green-600/20 border border-green-500/30 text-green-500 dark:text-green-400 px-4 py-3 rounded">
           Регистрация успешна! Теперь войдите в систему.
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded" data-testid="login-error">
+        <div className="bg-destructive/20 border border-destructive/30 text-destructive px-4 py-3 rounded" data-testid="login-error">
           {error}
         </div>
       )}
 
       <div className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-foreground">
             Email
           </label>
           <input
@@ -66,14 +66,14 @@ function LoginForm() {
             name="email"
             type="email"
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full px-3 py-2 border border-border rounded-md shadow-sm bg-background text-foreground focus:outline-none focus:ring-primary focus:border-primary"
             placeholder="email@example.com"
             data-testid="login-email"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-sm font-medium text-foreground">
             Пароль
           </label>
           <input
@@ -81,7 +81,7 @@ function LoginForm() {
             name="password"
             type="password"
             required
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="mt-1 block w-full px-3 py-2 border border-border rounded-md shadow-sm bg-background text-foreground focus:outline-none focus:ring-primary focus:border-primary"
             placeholder="Ваш пароль"
             data-testid="login-password"
           />
@@ -91,13 +91,13 @@ function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
         data-testid="login-submit"
       >
         {loading ? "Вход..." : "Войти"}
       </button>
 
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-sm text-muted-foreground">
         Для получения доступа обратитесь к администратору
       </p>
     </form>
@@ -106,18 +106,18 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
+          <h2 className="mt-6 text-center text-3xl font-bold text-foreground">
             Вход
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-muted-foreground">
             База знаний Smart Process
           </p>
         </div>
 
-        <Suspense fallback={<div className="text-center">Загрузка...</div>}>
+        <Suspense fallback={<div className="text-center text-muted-foreground">Загрузка...</div>}>
           <LoginForm />
         </Suspense>
       </div>

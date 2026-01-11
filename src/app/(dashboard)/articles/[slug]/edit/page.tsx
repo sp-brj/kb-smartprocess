@@ -20,8 +20,8 @@ export default async function EditArticlePage({ params }: Props) {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Редактирование</h1>
-      <div className="bg-white rounded-lg shadow p-6">
+      <h1 className="text-2xl font-bold text-foreground mb-6">Редактирование</h1>
+      <div className="bg-card rounded-lg shadow p-6">
         <ArticleEditor
           article={{
             id: article.id,

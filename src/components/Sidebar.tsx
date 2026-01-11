@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { TagCloud } from "./TagCloud";
 
@@ -22,6 +22,7 @@ export function Sidebar() {
   const [creatingInFolderId, setCreatingInFolderId] = useState<string | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const pathname = usePathname();
+  const router = useRouter();
 
   const [reloadCount, setReloadCount] = useState(0);
 
@@ -77,6 +78,32 @@ export function Sidebar() {
     setExpandedFolders(prev => new Set(prev).add(folderId));
   }
 
+  // Helper to update folder article counts optimistically
+  function updateFolderCounts(
+    folderList: Folder[],
+    fromFolderId: string | null,
+    toFolderId: string | null
+  ): Folder[] {
+    return folderList.map(folder => {
+      let newCount = folder._count.articles;
+
+      // Decrease count if article was in this folder
+      if (folder.id === fromFolderId) {
+        newCount = Math.max(0, newCount - 1);
+      }
+      // Increase count if article moved to this folder
+      if (folder.id === toFolderId) {
+        newCount = newCount + 1;
+      }
+
+      return {
+        ...folder,
+        _count: { articles: newCount },
+        children: folder.children ? updateFolderCounts(folder.children, fromFolderId, toFolderId) : [],
+      };
+    });
+  }
+
   async function handleDrop(e: React.DragEvent, folderId: string | null) {
     e.preventDefault();
     e.stopPropagation();
@@ -98,6 +125,13 @@ export function Sidebar() {
 
       if (data.type === "article") {
         console.log("Moving article", data.id, "to folder", folderId);
+
+        // Optimistic update: update folder counts locally
+        const previousFolderId = data.previousFolderId;
+        setFolders(prevFolders => {
+          return updateFolderCounts(prevFolders, previousFolderId, folderId);
+        });
+
         const res = await fetch(`/api/articles/${data.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -107,11 +141,13 @@ export function Sidebar() {
         console.log("API response status:", res.status);
 
         if (res.ok) {
-          // Full page reload to update Server Components data
-          window.location.reload();
+          // Soft refresh to update server components without full page reload
+          router.refresh();
         } else {
           const error = await res.text();
           console.error("API error:", error);
+          // Revert optimistic update on error
+          reloadFolders();
         }
       }
     } catch (error) {
@@ -144,7 +180,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 bg-card border-r border-border h-screen overflow-y-auto flex flex-col">
+    <aside className="w-full bg-card border-r border-border h-screen overflow-y-auto flex flex-col">
       <div className="p-4 flex-1">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-foreground">Папки</h2>
@@ -153,7 +189,7 @@ export function Sidebar() {
               setIsCreating(!isCreating);
               setCreatingInFolderId(null);
             }}
-            className="text-blue-600 hover:text-blue-700 text-sm"
+            className="text-primary hover:text-accent text-sm"
             data-testid="create-folder-btn"
           >
             + Новая
@@ -167,21 +203,21 @@ export function Sidebar() {
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               placeholder="Название папки"
-              className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full px-2 py-1 text-sm border border-border rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               autoFocus
               data-testid="folder-name-input"
             />
             <div className="flex gap-2 mt-2">
               <button
                 type="submit"
-                className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded hover:bg-accent"
               >
                 Создать
               </button>
               <button
                 type="button"
                 onClick={() => setIsCreating(false)}
-                className="text-xs text-gray-500 hover:text-gray-700"
+                className="text-xs text-muted-foreground hover:text-foreground"
               >
                 Отмена
               </button>
@@ -201,8 +237,8 @@ export function Sidebar() {
               href="/articles"
               className={`block px-3 py-2 rounded text-sm ${
                 pathname === "/articles"
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-gray-600 hover:bg-gray-50"
+                  ? "bg-primary/10 text-primary"
+                  : "text-foreground hover:bg-muted"
               }`}
               data-testid="all-articles-link"
             >
@@ -299,7 +335,7 @@ function FolderItem({
         onDragOver={handleLocalDragOver}
         onDragLeave={handleDragLeave}
         className={`rounded transition-colors ${
-          isDragOver ? "bg-blue-100 ring-2 ring-blue-400" : ""
+          isDragOver ? "bg-primary/20 ring-2 ring-primary" : ""
         }`}
         data-testid={`folder-dropzone-${folder.slug}`}
       >
@@ -308,11 +344,11 @@ function FolderItem({
           {hasChildren ? (
             <button
               onClick={() => toggleFolder(folder.id)}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-muted rounded"
               data-testid={`folder-toggle-${folder.slug}`}
             >
               <svg
-                className={`w-3 h-3 text-gray-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                className={`w-3 h-3 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -327,7 +363,7 @@ function FolderItem({
           <Link
             href={`/folders/${folder.slug}`}
             className={`flex-1 flex items-center justify-between px-2 py-2 rounded text-sm ${
-              isActive ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-50"
+              isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
             }`}
             data-testid={`folder-link-${folder.slug}`}
           >
@@ -343,7 +379,9 @@ function FolderItem({
               <span className="truncate">{folder.name}</span>
             </span>
             {folder._count.articles > 0 && (
-              <span className="text-xs text-gray-400">{folder._count.articles}</span>
+              <span className="ml-2 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                {folder._count.articles}
+              </span>
             )}
           </Link>
 
@@ -351,7 +389,7 @@ function FolderItem({
           {canCreateSubfolder && (
             <button
               onClick={() => startCreatingSubfolder(folder.id)}
-              className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-blue-600 transition-opacity"
+              className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-primary transition-opacity"
               title="Добавить подпапку"
               data-testid={`add-subfolder-${folder.slug}`}
             >
@@ -375,21 +413,21 @@ function FolderItem({
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
             placeholder="Название подпапки"
-            className="w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full px-2 py-1 text-sm border border-border rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             autoFocus
             data-testid={`subfolder-name-input-${folder.slug}`}
           />
           <div className="flex gap-2 mt-1">
             <button
               type="submit"
-              className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+              className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded hover:bg-accent"
             >
               Создать
             </button>
             <button
               type="button"
               onClick={() => setCreatingInFolderId(null)}
-              className="text-xs text-gray-500 hover:text-gray-700"
+              className="text-xs text-muted-foreground hover:text-foreground"
             >
               Отмена
             </button>

@@ -103,15 +103,15 @@ export function ImportButton({ folderId }: Props) {
         <div
           className={`absolute top-full mt-2 left-0 right-0 p-3 rounded-lg text-sm ${
             result.success
-              ? "bg-green-50 text-green-700 border border-green-200"
-              : "bg-red-50 text-red-700 border border-red-200"
+              ? "bg-green-600/20 text-green-500 dark:text-green-400 border border-green-500/30"
+              : "bg-destructive/20 text-destructive border border-destructive/30"
           }`}
         >
           <p>{result.message}</p>
           {result.slug && (
             <a
               href={`/articles/${result.slug}`}
-              className="text-blue-600 hover:underline mt-1 block"
+              className="text-primary hover:underline mt-1 block"
             >
               Открыть статью →
             </a>

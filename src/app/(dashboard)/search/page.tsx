@@ -58,7 +58,7 @@ export default async function SearchPage({ searchParams }: Props) {
     const parts = text.split(new RegExp(`(${searchQuery})`, "gi"));
     return parts.map((part, i) =>
       part.toLowerCase() === searchQuery.toLowerCase() ? (
-        <mark key={i} className="bg-yellow-200 px-0.5 rounded">
+        <mark key={i} className="bg-yellow-500/30 dark:bg-yellow-400/30 px-0.5 rounded">
           {part}
         </mark>
       ) : (
@@ -69,27 +69,27 @@ export default async function SearchPage({ searchParams }: Props) {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">
+      <h1 className="text-2xl font-bold text-foreground mb-2">
         Результаты поиска
       </h1>
       {query && (
-        <p className="text-gray-500 mb-6">
+        <p className="text-muted-foreground mb-6">
           По запросу &quot;{query}&quot; найдено: {articles.length}
         </p>
       )}
 
       {!query && (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-500">Введите поисковый запрос</p>
+        <div className="bg-card rounded-lg shadow p-8 text-center">
+          <p className="text-muted-foreground">Введите поисковый запрос</p>
         </div>
       )}
 
       {query && articles.length === 0 && (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-500 mb-4">Ничего не найдено</p>
+        <div className="bg-card rounded-lg shadow p-8 text-center">
+          <p className="text-muted-foreground mb-4">Ничего не найдено</p>
           <Link
             href="/articles"
-            className="text-blue-600 hover:underline"
+            className="text-primary hover:underline"
           >
             Посмотреть все статьи
           </Link>
@@ -102,16 +102,16 @@ export default async function SearchPage({ searchParams }: Props) {
             <Link
               key={article.id}
               href={`/articles/${article.slug}`}
-              className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
+              className="block bg-card rounded-lg shadow p-4 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h2 className="font-semibold text-gray-900 text-lg">
+                  <h2 className="font-semibold text-foreground text-lg">
                     {highlightText(article.title, query)}
                   </h2>
-                  <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                  <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                     {article.folder && (
-                      <span className="bg-gray-100 px-2 py-0.5 rounded">
+                      <span className="bg-muted px-2 py-0.5 rounded">
                         {article.folder.name}
                       </span>
                     )}
@@ -119,15 +119,15 @@ export default async function SearchPage({ searchParams }: Props) {
                       {new Date(article.updatedAt).toLocaleDateString("ru-RU")}
                     </span>
                   </div>
-                  <p className="mt-2 text-gray-600 text-sm">
+                  <p className="mt-2 text-muted-foreground text-sm">
                     {highlightText(getSnippet(article.content, query), query)}
                   </p>
                 </div>
                 <span
                   className={`ml-4 text-xs px-2 py-1 rounded whitespace-nowrap ${
                     article.status === "PUBLISHED"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-yellow-100 text-yellow-700"
+                      ? "bg-green-600/20 text-green-500 dark:bg-green-500/20 dark:text-green-400"
+                      : "bg-yellow-600/20 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400"
                   }`}
                 >
                   {article.status === "PUBLISHED" ? "Опубликовано" : "Черновик"}

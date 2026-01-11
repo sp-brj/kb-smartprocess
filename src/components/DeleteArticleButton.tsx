@@ -33,7 +33,7 @@ export function DeleteArticleButton({ articleId }: Props) {
     <button
       onClick={handleDelete}
       disabled={isDeleting}
-      className="px-4 py-2 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 disabled:opacity-50"
+      className="px-4 py-2 text-sm bg-destructive/20 text-destructive rounded hover:bg-destructive/30 disabled:opacity-50"
     >
       {isDeleting ? "Удаление..." : "Удалить"}
     </button>

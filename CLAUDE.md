@@ -54,6 +54,38 @@
   - Не вызывать setState синхронно в эффектах
 - Добавлять `data-testid` атрибуты для элементов UI (используются в тестах)
 
+### ESLint правила React Hooks (Vercel build)
+
+Vercel использует строгий ESLint. Частые ошибки:
+
+1. **`react-hooks/set-state-in-effect`** - нельзя вызывать setState в useEffect
+   ```typescript
+   // ❌ Плохо
+   useEffect(() => {
+     setState(value);
+   }, []);
+
+   // ✅ Хорошо - использовать useReducer
+   const [state, dispatch] = useReducer(reducer, initial);
+   useEffect(() => {
+     dispatch({ type: "SET", value });
+   }, []);
+
+   // ✅ Или useSyncExternalStore для внешнего состояния
+   const theme = useSyncExternalStore(subscribe, getSnapshot);
+   ```
+
+2. **`react-hooks/refs`** - нельзя читать ref.current во время рендера
+   ```typescript
+   // ❌ Плохо
+   const index = ref.current === key ? 0 : ref.current.index;
+
+   // ✅ Хорошо - вычислять из state
+   const index = state.key !== currentKey ? 0 : state.index;
+   ```
+
+3. **Unused variables** - удалять неиспользуемые импорты и переменные
+
 ## Структура проекта
 
 - `/src/components/` - React компоненты
@@ -83,6 +115,30 @@ test("example", async ({ authenticatedPage }) => {
 - `ArticleEditorPage` - создание/редактирование статей
 - `ArticleViewPage` - просмотр статьи
 - `AdminUsersPage` - админ-панель пользователей
+
+### Запуск тестов
+
+**Локально (рекомендуется для разработки):**
+```bash
+npx playwright test --project=chromium
+```
+
+**На production:**
+```bash
+BASE_URL=https://kb-smartprocess.vercel.app npx playwright test
+```
+
+⚠️ **Важно:** При запуске на production возможны ошибки из-за исчерпания пула соединений Supabase (ограничение free tier). В этом случае:
+- Запускать тесты малыми группами (по 5-10)
+- Или использовать локальный dev сервер
+
+### Известные проблемы E2E
+
+1. **Next.js кэширование** - после создания данных страница может показывать старые данные. Решение: `page.reload()` перед проверкой.
+
+2. **localStorage draft** - ArticleEditor сохраняет черновик в localStorage. При тестах создания статьи в папке нужно очистить: `localStorage.removeItem("article-draft")`
+
+3. **Supabase pool exhaustion** - при массовых запросах база возвращает "max clients reached". Конфиг настроен на sequential запуск (`fullyParallel: false`) для production.
 
 ## Функционал базы знаний
 

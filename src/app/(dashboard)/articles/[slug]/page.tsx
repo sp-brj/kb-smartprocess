@@ -62,8 +62,8 @@ export default async function ArticlePage({ params }: Props) {
               <span
                 className={`px-2 py-0.5 rounded ${
                   article.status === "PUBLISHED"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-yellow-100 text-yellow-700"
+                    ? "bg-green-600/20 text-green-500 dark:bg-green-500/20 dark:text-green-400"
+                    : "bg-yellow-600/20 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400"
                 }`}
               >
                 {article.status === "PUBLISHED" ? "Опубликовано" : "Черновик"}
@@ -75,7 +75,7 @@ export default async function ArticlePage({ params }: Props) {
             <ShareButton articleId={article.id} />
             <Link
               href={`/articles/${article.slug}/edit`}
-              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+              className="px-4 py-2 text-sm bg-muted text-foreground rounded hover:bg-border"
             >
               Редактировать
             </Link>

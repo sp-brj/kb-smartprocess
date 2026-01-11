@@ -16,7 +16,7 @@ export function ArticleContent({ content }: Props) {
   }
 
   return (
-    <div className="prose prose-gray dark:prose-invert max-w-none">
+    <div className="prose dark:prose-invert max-w-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkWikilinks]}
         components={{

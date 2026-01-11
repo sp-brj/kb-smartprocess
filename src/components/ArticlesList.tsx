@@ -10,7 +10,8 @@ interface Article {
   status: "DRAFT" | "PUBLISHED";
   updatedAt: string;
   author: { name: string | null; email: string };
-  folder: { name: string; slug: string } | null;
+  folder: { id: string; name: string; slug: string } | null;
+  folderId: string | null;
 }
 
 interface ArticlesListProps {
@@ -26,11 +27,12 @@ export function ArticlesList({ initialArticles }: ArticlesListProps) {
     console.log("Drag start:", article.title);
     setDraggedArticleId(article.id);
 
-    // Set drag data
+    // Set drag data including previous folder for optimistic updates
     e.dataTransfer.setData("application/json", JSON.stringify({
       type: "article",
       id: article.id,
       title: article.title,
+      previousFolderId: article.folderId,
     }));
     e.dataTransfer.setData("text/plain", article.title);
     e.dataTransfer.effectAllowed = "move";
@@ -54,7 +56,7 @@ export function ArticlesList({ initialArticles }: ArticlesListProps) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow divide-y" data-testid="articles-list">
+    <div className="bg-card rounded-lg shadow divide-y divide-border" data-testid="articles-list">
       {articles.map((article) => (
         <div
           key={article.id}
@@ -62,8 +64,8 @@ export function ArticlesList({ initialArticles }: ArticlesListProps) {
           onDragStart={(e) => handleDragStart(e, article)}
           onDragEnd={handleDragEnd}
           onClick={() => handleClick(article.slug)}
-          className={`block p-4 hover:bg-gray-50 transition-colors cursor-grab active:cursor-grabbing select-none ${
-            draggedArticleId === article.id ? "opacity-50 bg-blue-50" : ""
+          className={`block p-4 hover:bg-muted transition-colors cursor-grab active:cursor-grabbing select-none ${
+            draggedArticleId === article.id ? "opacity-50 bg-primary/10" : ""
           }`}
           data-testid={`article-item-${article.slug}`}
         >
@@ -71,7 +73,7 @@ export function ArticlesList({ initialArticles }: ArticlesListProps) {
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3">
                 <svg
-                  className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0"
+                  className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -84,10 +86,10 @@ export function ArticlesList({ initialArticles }: ArticlesListProps) {
                   />
                 </svg>
                 <div>
-                  <h2 className="font-medium text-gray-900">{article.title}</h2>
-                  <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                  <h2 className="font-medium text-foreground">{article.title}</h2>
+                  <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                     {article.folder && (
-                      <span className="bg-gray-100 px-2 py-0.5 rounded">
+                      <span className="bg-muted px-2 py-0.5 rounded">
                         {article.folder.name}
                       </span>
                     )}
@@ -101,8 +103,8 @@ export function ArticlesList({ initialArticles }: ArticlesListProps) {
               <span
                 className={`text-xs px-2 py-1 rounded ${
                   article.status === "PUBLISHED"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-yellow-100 text-yellow-700"
+                    ? "bg-green-600/20 text-green-500 dark:bg-green-500/20 dark:text-green-400"
+                    : "bg-yellow-600/20 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400"
                 }`}
               >
                 {article.status === "PUBLISHED" ? "Опубликовано" : "Черновик"}

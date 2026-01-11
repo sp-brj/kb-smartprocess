@@ -251,7 +251,7 @@ export function ArticleEditor({ article }: Props) {
       {/* Editor / Preview */}
       <div className="min-h-[400px] relative">
         {showPreview ? (
-          <div className="prose prose-gray dark:prose-invert max-w-none p-4 bg-muted rounded min-h-[400px]">
+          <div className="prose dark:prose-invert max-w-none p-4 bg-muted rounded min-h-[400px]">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {content || "*Начните писать...*"}
             </ReactMarkdown>

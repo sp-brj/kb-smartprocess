@@ -90,12 +90,12 @@ export function ShareButton({ articleId }: Props) {
 
       {isOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">Публичная ссылка</h3>
+          <div className="bg-card rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="text-lg font-semibold text-foreground">Публичная ссылка</h3>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <svg
                   className="w-5 h-5"
@@ -115,18 +115,18 @@ export function ShareButton({ articleId }: Props) {
 
             <div className="p-4">
               {isLoading ? (
-                <div className="text-center py-4 text-gray-500">
+                <div className="text-center py-4 text-muted-foreground">
                   Загрузка...
                 </div>
               ) : activeLinks.length === 0 ? (
                 <div className="text-center py-4">
-                  <p className="text-gray-500 mb-4">
+                  <p className="text-muted-foreground mb-4">
                     Нет активных ссылок. Создайте ссылку, чтобы поделиться
                     статьёй.
                   </p>
                   <button
                     onClick={createLink}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-accent"
                   >
                     Создать ссылку
                   </button>
@@ -136,7 +136,7 @@ export function ShareButton({ articleId }: Props) {
                   {activeLinks.map((link) => (
                     <div
                       key={link.id}
-                      className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg"
+                      className="flex items-center gap-2 p-3 bg-muted rounded-lg"
                     >
                       <input
                         type="text"
@@ -146,17 +146,17 @@ export function ShareButton({ articleId }: Props) {
                             ? window.location.origin
                             : ""
                         }/share/${link.token}`}
-                        className="flex-1 text-sm bg-transparent border-none focus:outline-none text-gray-600"
+                        className="flex-1 text-sm bg-transparent border-none focus:outline-none text-muted-foreground"
                       />
                       <button
                         onClick={() => copyLink(link.token)}
-                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                        className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-accent"
                       >
                         {copied ? "Скопировано!" : "Копировать"}
                       </button>
                       <button
                         onClick={() => revokeLink(link.token)}
-                        className="px-3 py-1 text-sm text-red-600 hover:text-red-700"
+                        className="px-3 py-1 text-sm text-destructive hover:text-destructive/80"
                         title="Отозвать ссылку"
                       >
                         <svg
@@ -177,7 +177,7 @@ export function ShareButton({ articleId }: Props) {
                   ))}
                   <button
                     onClick={createLink}
-                    className="w-full px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg"
+                    className="w-full px-4 py-2 text-sm text-primary hover:bg-primary/10 rounded-lg"
                   >
                     + Создать ещё одну ссылку
                   </button>
@@ -185,8 +185,8 @@ export function ShareButton({ articleId }: Props) {
               )}
             </div>
 
-            <div className="px-4 py-3 bg-gray-50 rounded-b-lg">
-              <p className="text-xs text-gray-500">
+            <div className="px-4 py-3 bg-muted rounded-b-lg">
+              <p className="text-xs text-muted-foreground">
                 Любой, у кого есть ссылка, сможет просматривать эту статью без
                 входа в систему.
               </p>

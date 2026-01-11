@@ -47,26 +47,49 @@ test.describe("Articles - Drag and Drop", () => {
 
     const folderSlug = folderName.toLowerCase().replace(/\s+/g, "-");
 
-    // Create article in folder
+    // Clear localStorage draft before creating article (to avoid loading old draft)
+    await page.evaluate(() => localStorage.removeItem("article-draft"));
+
+    // Create article in folder - go to new article page
     await authenticatedPage.newArticleButton.click();
+    await page.waitForURL("/articles/new");
+
+    // Wait for folders dropdown to load
+    const selectElement = page.locator("select").first();
+    await expect(selectElement).toBeVisible({ timeout: 10000 });
+
+    // Wait for our folder option to appear in dropdown
+    // New folders may need a moment to appear in the API response
+    await page.waitForFunction(
+      (folder) => {
+        const select = document.querySelector("select") as HTMLSelectElement;
+        if (!select) return false;
+        return Array.from(select.options).some(opt => opt.text.includes(folder));
+      },
+      folderName,
+      { timeout: 15000 }
+    );
+
+    // Now fill in the article
     const title = `In Folder ${timestamp}`;
     await articleEditorPage.titleInput.fill(title);
     await articleEditorPage.contentInput.fill("Content to move.");
 
-    // Wait for folders dropdown to load, then select
-    await page.waitForTimeout(1000);
-    const selectElement = page.locator("select").first();
+    // Select the folder
     await selectElement.selectOption({ label: folderName });
 
     await articleEditorPage.submitButton.click();
     await page.waitForURL(/\/articles\/[^/]+$/, { timeout: 15000 });
 
     // Navigate to folder page using the direct URL
-    await page.goto(`/folders/${folderSlug}`);
-    await page.waitForLoadState("networkidle");
+    // Use hard navigation to bypass Next.js cache
+    await page.goto(`/folders/${folderSlug}`, { waitUntil: "networkidle" });
 
     // Verify we're on folder page
     await expect(page.locator("h1")).toContainText(folderName, { timeout: 10000 });
+
+    // Force reload to get fresh server data (Next.js caching issue)
+    await page.reload({ waitUntil: "networkidle" });
 
     // Verify article is in the folder
     await expect(page.locator(`text=${title}`)).toBeVisible({ timeout: 10000 });

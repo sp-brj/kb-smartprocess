@@ -68,7 +68,7 @@ export function SearchBox() {
     <div ref={containerRef} className="relative">
       <div className="relative">
         <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -87,33 +87,33 @@ export function SearchBox() {
           onFocus={() => results.length > 0 && setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder="Поиск..."
-          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           data-testid="search-input"
         />
         {isLoading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </div>
 
       {isOpen && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto" data-testid="search-results">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto" data-testid="search-results">
           {results.map((result) => (
             <Link
               key={result.id}
               href={`/articles/${result.slug}`}
               onClick={() => setIsOpen(false)}
-              className="block p-3 hover:bg-gray-50 border-b last:border-b-0"
+              className="block p-3 hover:bg-muted border-b border-border last:border-b-0"
               data-testid={`search-result-${result.slug}`}
             >
-              <div className="font-medium text-gray-900">{result.title}</div>
+              <div className="font-medium text-foreground">{result.title}</div>
               {result.folder && (
-                <div className="text-xs text-gray-500 mt-0.5">
+                <div className="text-xs text-muted-foreground mt-0.5">
                   {result.folder.name}
                 </div>
               )}
-              <div className="text-sm text-gray-600 mt-1 line-clamp-2">
+              <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
                 {result.snippet}
               </div>
             </Link>
@@ -121,7 +121,7 @@ export function SearchBox() {
           <Link
             href={`/search?q=${encodeURIComponent(query)}`}
             onClick={() => setIsOpen(false)}
-            className="block p-3 text-center text-sm text-blue-600 hover:bg-blue-50 border-t"
+            className="block p-3 text-center text-sm text-primary hover:bg-primary/10 border-t border-border"
           >
             Показать все результаты →
           </Link>
@@ -129,7 +129,7 @@ export function SearchBox() {
       )}
 
       {isOpen && query.trim().length >= 2 && results.length === 0 && !isLoading && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-4 text-center text-gray-500" data-testid="search-no-results">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 p-4 text-center text-muted-foreground" data-testid="search-no-results">
           Ничего не найдено
         </div>
       )}

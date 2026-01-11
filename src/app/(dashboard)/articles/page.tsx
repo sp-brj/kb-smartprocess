@@ -7,7 +7,7 @@ export default async function ArticlesPage() {
   const articles = await prisma.article.findMany({
     include: {
       author: { select: { name: true, email: true } },
-      folder: { select: { name: true, slug: true } },
+      folder: { select: { id: true, name: true, slug: true } },
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -20,17 +20,18 @@ export default async function ArticlesPage() {
     updatedAt: article.updatedAt.toISOString(),
     author: article.author,
     folder: article.folder,
+    folderId: article.folderId,
   }));
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Все статьи</h1>
+        <h1 className="text-2xl font-bold text-foreground">Все статьи</h1>
         <div className="flex gap-3">
           <ImportButton />
           <Link
             href="/articles/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-accent"
           >
             + Новая статья
           </Link>
@@ -38,11 +39,11 @@ export default async function ArticlesPage() {
       </div>
 
       {articles.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-gray-500 mb-4">Статей пока нет</p>
+        <div className="bg-card rounded-lg shadow p-8 text-center">
+          <p className="text-muted-foreground mb-4">Статей пока нет</p>
           <Link
             href="/articles/new"
-            className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="inline-block bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-accent"
           >
             Создать первую статью
           </Link>
