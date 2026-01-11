@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { TagCloud } from "./TagCloud";
+import { RecentArticles } from "./RecentArticles";
 
 interface Folder {
   id: string;
@@ -283,6 +284,7 @@ export function Sidebar() {
           ))}
         </nav>
       </div>
+      <RecentArticles />
       <TagCloud />
       <div className="p-4 border-t border-border">
         <ThemeToggle />
