@@ -3,9 +3,25 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArticlesList } from "@/components/ArticlesList";
 import { FolderHeader } from "@/components/FolderHeader";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+}
+
+// Рекурсивно получаем иерархию папок (без текущей)
+async function getParentHierarchy(parentId: string | null): Promise<Array<{ name: string; slug: string }>> {
+  if (!parentId) return [];
+
+  const folder = await prisma.folder.findUnique({
+    where: { id: parentId },
+    select: { name: true, slug: true, parentId: true },
+  });
+
+  if (!folder) return [];
+
+  const parents = await getParentHierarchy(folder.parentId);
+  return [...parents, { name: folder.name, slug: folder.slug }];
 }
 
 export default async function FolderPage({ params }: PageProps) {
@@ -34,6 +50,15 @@ export default async function FolderPage({ params }: PageProps) {
     notFound();
   }
 
+  // Получаем иерархию родительских папок
+  const parentHierarchy = await getParentHierarchy(folder.parentId);
+
+  // Формируем хлебные крошки
+  const breadcrumbItems = [
+    ...parentHierarchy.map((f) => ({ name: f.name, href: `/folders/${f.slug}` })),
+    { name: folder.name },
+  ];
+
   // Transform articles to match ArticlesList interface
   const articlesForList = folder.articles.map((article) => ({
     id: article.id,
@@ -48,6 +73,7 @@ export default async function FolderPage({ params }: PageProps) {
 
   return (
     <div>
+      <Breadcrumbs items={breadcrumbItems} />
       <FolderHeader folderId={folder.id} folderName={folder.name} />
 
       {folder.children.length > 0 && (

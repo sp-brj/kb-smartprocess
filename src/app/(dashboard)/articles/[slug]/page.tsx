@@ -7,9 +7,27 @@ import { ShareButton } from "@/components/ShareButton";
 import { BacklinksPanel } from "@/components/BacklinksPanel";
 import { HistoryButton } from "@/components/HistoryButton";
 import { ExportButton } from "@/components/ExportButton";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+// Рекурсивно получаем иерархию папок
+async function getFolderHierarchy(folderId: string): Promise<Array<{ name: string; slug: string }>> {
+  const folder = await prisma.folder.findUnique({
+    where: { id: folderId },
+    select: { name: true, slug: true, parentId: true },
+  });
+
+  if (!folder) return [];
+
+  if (folder.parentId) {
+    const parents = await getFolderHierarchy(folder.parentId);
+    return [...parents, { name: folder.name, slug: folder.slug }];
+  }
+
+  return [{ name: folder.name, slug: folder.slug }];
 }
 
 export default async function ArticlePage({ params }: Props) {
@@ -20,35 +38,28 @@ export default async function ArticlePage({ params }: Props) {
     where: { slug: decodedSlug },
     include: {
       author: { select: { name: true, email: true } },
-      folder: { select: { name: true, slug: true } },
+      folder: { select: { id: true, name: true, slug: true } },
     },
   });
+
+  // Получаем полную иерархию папок
+  const folderHierarchy = article?.folder
+    ? await getFolderHierarchy(article.folder.id)
+    : [];
 
   if (!article) {
     notFound();
   }
 
+  // Формируем хлебные крошки
+  const breadcrumbItems = [
+    ...folderHierarchy.map((f) => ({ name: f.name, href: `/folders/${f.slug}` })),
+    { name: article.title },
+  ];
+
   return (
     <div className="max-w-4xl">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-        <Link href="/articles" className="hover:text-foreground">
-          Статьи
-        </Link>
-        {article.folder && (
-          <>
-            <span>/</span>
-            <Link
-              href={`/folders/${article.folder.slug}`}
-              className="hover:text-foreground"
-            >
-              {article.folder.name}
-            </Link>
-          </>
-        )}
-        <span>/</span>
-        <span className="text-foreground">{article.title}</span>
-      </nav>
+      <Breadcrumbs items={breadcrumbItems} />
 
       {/* Header */}
       <div className="bg-card rounded-lg shadow p-6 mb-6">
