@@ -2,6 +2,7 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 import Link from "next/link";
 import { remarkWikilinks } from "@/lib/remark-wikilinks";
 import type { ComponentProps } from "react";
@@ -19,6 +20,7 @@ export function ArticleContent({ content }: Props) {
     <div className="prose dark:prose-invert max-w-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkWikilinks]}
+        rehypePlugins={[rehypeRaw]}
         components={{
           a: ({ href, children, ...props }: ComponentProps<"a">) => {
             // Внутренние ссылки (wiki-links и обычные)

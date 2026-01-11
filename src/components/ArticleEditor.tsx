@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 import { WikilinkAutocomplete } from "./WikilinkAutocomplete";
 import { TagSelector } from "./TagSelector";
 import { ImageUploadButton } from "./ImageUploadButton";
@@ -466,7 +467,7 @@ export function ArticleEditor({ article }: Props) {
       <div className="min-h-[400px] relative">
         {showPreview ? (
           <div className="prose dark:prose-invert max-w-none p-4 bg-muted rounded min-h-[400px]">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
               {content || "*Начните писать...*"}
             </ReactMarkdown>
           </div>
@@ -500,6 +501,15 @@ export function ArticleEditor({ article }: Props) {
                 title="Зачёркнутый"
               >
                 S
+              </button>
+              {/* Подчёркнутый */}
+              <button
+                type="button"
+                onClick={() => insertFormatting("<u>", "</u>", "подчёркнутый")}
+                className="p-2 hover:bg-card rounded text-foreground underline"
+                title="Подчёркнутый"
+              >
+                U
               </button>
 
               <div className="w-px h-6 bg-border mx-1" />
