@@ -110,3 +110,14 @@ body {
 .tag-badge:hover {
   background: var(--border);
 }
+
+/* Prose typography - используем цвета темы */
+.prose {
+  --tw-prose-body: var(--foreground);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-links: var(--primary);
+  --tw-prose-code: var(--foreground);
+  --tw-prose-quotes: var(--foreground);
+  color: var(--foreground);
+}
