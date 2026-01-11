@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArticlesList } from "@/components/ArticlesList";
+import { FolderHeader } from "@/components/FolderHeader";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -47,15 +48,7 @@ export default async function FolderPage({ params }: PageProps) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">{folder.name}</h1>
-        <Link
-          href="/articles/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-accent"
-        >
-          + Новая статья
-        </Link>
-      </div>
+      <FolderHeader folderId={folder.id} folderName={folder.name} />
 
       {folder.children.length > 0 && (
         <div className="mb-6">
