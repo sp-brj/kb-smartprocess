@@ -31,7 +31,7 @@ test.describe("Sharing", () => {
     }
 
     // Get share link
-    const linkInput = page.locator("input.text-gray-600");
+    const linkInput = page.locator("input[readonly][type='text']");
     await expect(linkInput).toBeVisible({ timeout: 5000 });
     const shareLink = await linkInput.inputValue();
     expect(shareLink).toContain("/share/");

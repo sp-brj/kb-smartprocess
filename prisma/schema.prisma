@@ -67,6 +67,7 @@ model Article {
   incomingLinks ArticleLink[]    @relation("IncomingLinks")
   tags          ArticleTag[]
   versions      ArticleVersion[]
+  images        Image[]
 }
 
 enum Status {
@@ -165,4 +166,21 @@ enum ChangeType {
   CREATE
   UPDATE
   REVERT
+}
+
+// =====================
+// IMAGES
+// =====================
+
+model Image {
+  id         String   @id @default(cuid())
+  publicId   String   @unique // Cloudinary public_id
+  url        String            // URL изображения
+  caption    String?           // Подпись
+  articleId  String?           // Связь со статьёй (опционально)
+  article    Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  uploadedBy String            // ID пользователя
+  createdAt  DateTime @default(now())
+
+  @@index([articleId])
 }

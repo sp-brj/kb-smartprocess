@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { WikilinkAutocomplete } from "./WikilinkAutocomplete";
 import { TagSelector } from "./TagSelector";
+import { ImageUploadButton } from "./ImageUploadButton";
 
 interface Folder {
   id: string;
@@ -54,6 +55,8 @@ export function ArticleEditor({ article }: Props) {
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [autocomplete, setAutocomplete] = useState<AutocompleteState | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     fetch("/api/folders")
@@ -231,6 +234,109 @@ export function ArticleEditor({ article }: Props) {
         const selectEnd = selectStart + 3; // "код"
         textarea.setSelectionRange(selectStart, selectEnd);
       }
+    }, 0);
+  }
+
+  // Загрузка файла изображения
+  async function uploadImageFile(file: File, caption?: string) {
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Неподдерживаемый формат. Разрешены: jpg, png, gif, webp");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Файл слишком большой. Максимум: 5MB");
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (caption) formData.append("caption", caption);
+      if (article?.id) formData.append("articleId", article.id);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Upload failed");
+      }
+
+      const data = await res.json();
+      const markdown = caption ? `![${caption}](${data.url})` : `![](${data.url})`;
+      insertImageMarkdown(markdown);
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert(error instanceof Error ? error.message : "Ошибка загрузки");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }
+
+  // Обработка drag & drop
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFile = files.find((f) => f.type.startsWith("image/"));
+    if (imageFile) {
+      uploadImageFile(imageFile);
+    }
+  }
+
+  // Обработка paste
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = Array.from(e.clipboardData.items);
+    const imageItem = items.find((item) => item.type.startsWith("image/"));
+
+    if (imageItem) {
+      e.preventDefault();
+      const file = imageItem.getAsFile();
+      if (file) {
+        uploadImageFile(file);
+      }
+    }
+  }
+
+  // Вставка markdown изображения в текущую позицию курсора
+  function insertImageMarkdown(markdown: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const before = content.slice(0, start);
+    const after = content.slice(start);
+
+    // Добавляем перенос строки если нужно
+    const needsNewlineBefore = before.length > 0 && !before.endsWith("\n");
+    const needsNewlineAfter = after.length > 0 && !after.startsWith("\n");
+
+    const newContent = `${before}${needsNewlineBefore ? "\n" : ""}${markdown}${needsNewlineAfter ? "\n" : ""}${after}`;
+    setContent(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = before.length + (needsNewlineBefore ? 1 : 0) + markdown.length + (needsNewlineAfter ? 1 : 0);
+      textarea.setSelectionRange(newPos, newPos);
     }, 0);
   }
 
@@ -500,6 +606,11 @@ export function ArticleEditor({ article }: Props) {
               >
                 [[]]
               </button>
+              {/* Изображение */}
+              <ImageUploadButton
+                onUpload={insertImageMarkdown}
+                articleId={article?.id}
+              />
 
               <div className="w-px h-6 bg-border mx-1" />
 
@@ -516,15 +627,45 @@ export function ArticleEditor({ article }: Props) {
               </button>
             </div>
 
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={handleContentChange}
-              onKeyDown={handleKeyDown}
-              placeholder="Содержимое статьи (поддерживается Markdown). Используйте [[название]] для ссылок на другие статьи."
-              className="w-full h-[400px] px-4 py-3 border border-border rounded-t-none rounded-b font-mono text-sm resize-y bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              data-testid="article-content-input"
-            />
+            <div
+              className="relative"
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={handleContentChange}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                placeholder="Содержимое статьи (поддерживается Markdown). Используйте [[название]] для ссылок на другие статьи. Перетащите изображение или вставьте из буфера (Ctrl+V)."
+                className={`w-full h-[400px] px-4 py-3 border border-border rounded-t-none rounded-b font-mono text-sm resize-y bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${
+                  isDragging ? "border-primary border-2 bg-primary/5" : ""
+                }`}
+                data-testid="article-content-input"
+              />
+              {/* Индикатор drag & drop */}
+              {isDragging && (
+                <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded pointer-events-none">
+                  <div className="text-primary font-medium">
+                    Отпустите для загрузки изображения
+                  </div>
+                </div>
+              )}
+              {/* Индикатор загрузки */}
+              {isUploadingImage && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded pointer-events-none">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Загрузка изображения...
+                  </div>
+                </div>
+              )}
+            </div>
             {autocomplete?.isOpen && (
               <WikilinkAutocomplete
                 query={autocomplete.query}

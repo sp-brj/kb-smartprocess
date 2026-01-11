@@ -41,6 +41,36 @@ export function ArticleContent({ content }: Props) {
               </a>
             );
           },
+          // Кастомный рендеринг изображений с подписями
+          img: ({ src, alt, ...props }: ComponentProps<"img">) => {
+            // Если есть подпись (alt текст), оборачиваем в figure
+            if (alt) {
+              return (
+                <figure className="my-6">
+                  <img
+                    src={src}
+                    alt={alt}
+                    className="rounded-lg border border-border max-w-full h-auto mx-auto"
+                    loading="lazy"
+                    {...props}
+                  />
+                  <figcaption className="text-center text-sm text-muted-foreground mt-2 italic">
+                    {alt}
+                  </figcaption>
+                </figure>
+              );
+            }
+            // Без подписи — обычное изображение
+            return (
+              <img
+                src={src}
+                alt=""
+                className="rounded-lg border border-border max-w-full h-auto my-4"
+                loading="lazy"
+                {...props}
+              />
+            );
+          },
         }}
       >
         {content}
