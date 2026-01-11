@@ -14,11 +14,20 @@ interface Props {
   articleId: string;
 }
 
+const EXPIRATION_OPTIONS = [
+  { value: 0, label: "Бессрочно" },
+  { value: 1, label: "1 день" },
+  { value: 7, label: "7 дней" },
+  { value: 30, label: "30 дней" },
+  { value: 90, label: "90 дней" },
+];
+
 export function ShareButton({ articleId }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [links, setLinks] = useState<ShareLink[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [expiresInDays, setExpiresInDays] = useState(0);
 
   async function loadLinks() {
     const res = await fetch(`/api/articles/${articleId}/share`);
@@ -39,9 +48,12 @@ export function ShareButton({ articleId }: Props) {
     setIsLoading(true);
     const res = await fetch(`/api/articles/${articleId}/share`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: expiresInDays > 0 ? JSON.stringify({ expiresInDays }) : undefined,
     });
     if (res.ok) {
       await loadLinks();
+      setExpiresInDays(0); // сброс после создания
     }
     setIsLoading(false);
   }
@@ -124,6 +136,22 @@ export function ShareButton({ articleId }: Props) {
                     Нет активных ссылок. Создайте ссылку, чтобы поделиться
                     статьёй.
                   </p>
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <label className="text-sm text-muted-foreground">
+                      Срок действия:
+                    </label>
+                    <select
+                      value={expiresInDays}
+                      onChange={(e) => setExpiresInDays(Number(e.target.value))}
+                      className="px-3 py-1.5 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      {EXPIRATION_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <button
                     onClick={createLink}
                     className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-accent"
@@ -133,54 +161,94 @@ export function ShareButton({ articleId }: Props) {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {activeLinks.map((link) => (
-                    <div
-                      key={link.id}
-                      className="flex items-center gap-2 p-3 bg-muted rounded-lg"
-                    >
-                      <input
-                        type="text"
-                        readOnly
-                        value={`${
-                          typeof window !== "undefined"
-                            ? window.location.origin
-                            : ""
-                        }/share/${link.token}`}
-                        className="flex-1 text-sm bg-transparent border-none focus:outline-none text-muted-foreground"
-                      />
-                      <button
-                        onClick={() => copyLink(link.token)}
-                        className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-accent"
+                  {activeLinks.map((link) => {
+                    const isExpired = link.expiresAt ? new Date(link.expiresAt) < new Date() : false;
+                    return (
+                      <div
+                        key={link.id}
+                        className={`p-3 bg-muted rounded-lg ${isExpired ? "opacity-60" : ""}`}
                       >
-                        {copied ? "Скопировано!" : "Копировать"}
-                      </button>
-                      <button
-                        onClick={() => revokeLink(link.token)}
-                        className="px-3 py-1 text-sm text-destructive hover:text-destructive/80"
-                        title="Отозвать ссылку"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={`${
+                              typeof window !== "undefined"
+                                ? window.location.origin
+                                : ""
+                            }/share/${link.token}`}
+                            className="flex-1 text-sm bg-transparent border-none focus:outline-none text-muted-foreground"
                           />
-                        </svg>
-                      </button>
+                          <button
+                            onClick={() => copyLink(link.token)}
+                            className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-accent"
+                            disabled={isExpired}
+                          >
+                            {copied ? "Скопировано!" : "Копировать"}
+                          </button>
+                          <button
+                            onClick={() => revokeLink(link.token)}
+                            className="px-3 py-1 text-sm text-destructive hover:text-destructive/80"
+                            title="Отозвать ссылку"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          {isExpired ? (
+                            <span className="text-destructive">Срок действия истёк</span>
+                          ) : link.expiresAt ? (
+                            <span>
+                              Действует до:{" "}
+                              {new Date(link.expiresAt).toLocaleDateString("ru-RU", {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                              })}
+                            </span>
+                          ) : (
+                            <span>Бессрочная ссылка</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="pt-2 border-t border-border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <label className="text-sm text-muted-foreground">
+                        Срок действия:
+                      </label>
+                      <select
+                        value={expiresInDays}
+                        onChange={(e) => setExpiresInDays(Number(e.target.value))}
+                        className="px-2 py-1 text-sm bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        {EXPIRATION_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  ))}
-                  <button
-                    onClick={createLink}
-                    className="w-full px-4 py-2 text-sm text-primary hover:bg-primary/10 rounded-lg"
-                  >
-                    + Создать ещё одну ссылку
-                  </button>
+                    <button
+                      onClick={createLink}
+                      className="w-full px-4 py-2 text-sm text-primary hover:bg-primary/10 rounded-lg"
+                    >
+                      + Создать ещё одну ссылку
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
