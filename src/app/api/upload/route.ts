@@ -4,17 +4,30 @@ import { v2 as cloudinary } from "cloudinary";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// Конфигурация Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
+// Функция для конфигурации Cloudinary (вызывается при каждом запросе)
+function configureCloudinary() {
+  const cloud_name = process.env.CLOUDINARY_CLOUD_NAME;
+  const api_key = process.env.CLOUDINARY_API_KEY;
+  const api_secret = process.env.CLOUDINARY_API_SECRET;
+
+  console.log("Cloudinary config:", {
+    cloud_name: cloud_name ? "set" : "MISSING",
+    api_key: api_key ? `${api_key.substring(0, 4)}...` : "MISSING",
+    api_secret: api_secret ? "set" : "MISSING",
+  });
+
+  cloudinary.config({
+    cloud_name,
+    api_key,
+    api_secret,
+  });
+}
+
 export async function POST(request: NextRequest) {
+  configureCloudinary();
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
@@ -90,6 +103,7 @@ export async function POST(request: NextRequest) {
 
 // DELETE - удаление изображения
 export async function DELETE(request: NextRequest) {
+  configureCloudinary();
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {

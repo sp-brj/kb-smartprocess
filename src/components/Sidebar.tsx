@@ -78,6 +78,21 @@ export function Sidebar() {
     setExpandedFolders(prev => new Set(prev).add(folderId));
   }
 
+  async function deleteFolder(folderId: string) {
+    if (!confirm("Удалить папку? Папка должна быть пустой.")) return;
+
+    const res = await fetch(`/api/folders/${folderId}`, {
+      method: "DELETE",
+    });
+
+    if (res.ok) {
+      reloadFolders();
+    } else {
+      const data = await res.json();
+      alert(data.error || "Ошибка удаления папки");
+    }
+  }
+
   // Helper to update folder article counts optimistically
   function updateFolderCounts(
     folderList: Folder[],
@@ -263,6 +278,7 @@ export function Sidebar() {
               setCreatingInFolderId={setCreatingInFolderId}
               startCreatingSubfolder={startCreatingSubfolder}
               getFolderDepth={getFolderDepth}
+              onDeleteFolder={deleteFolder}
             />
           ))}
         </nav>
@@ -290,6 +306,7 @@ interface FolderItemProps {
   setCreatingInFolderId: (id: string | null) => void;
   startCreatingSubfolder: (id: string) => void;
   getFolderDepth: (folder: Folder) => number;
+  onDeleteFolder: (folderId: string) => Promise<void>;
 }
 
 function FolderItem({
@@ -307,8 +324,10 @@ function FolderItem({
   setCreatingInFolderId,
   startCreatingSubfolder,
   getFolderDepth,
+  onDeleteFolder,
 }: FolderItemProps) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const isActive = pathname === `/folders/${folder.slug}`;
   const isExpanded = expandedFolders.has(folder.id);
   const hasChildren = folder.children && folder.children.length > 0;
@@ -328,12 +347,28 @@ function FolderItem({
     onDrop(e, folder.id);
   }
 
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }
+
+  // Закрыть контекстное меню при клике вне
+  useEffect(() => {
+    if (!contextMenu) return;
+    function handleClick() {
+      setContextMenu(null);
+    }
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
+  }, [contextMenu]);
+
   return (
     <div style={{ marginLeft: depth > 0 ? `${depth * 12}px` : 0 }} data-testid={`folder-item-${folder.slug}`}>
       <div
         onDrop={handleLocalDrop}
         onDragOver={handleLocalDragOver}
         onDragLeave={handleDragLeave}
+        onContextMenu={handleContextMenu}
         className={`rounded transition-colors ${
           isDragOver ? "bg-primary/20 ring-2 ring-primary" : ""
         }`}
@@ -401,6 +436,41 @@ function FolderItem({
         </div>
       </div>
 
+      {/* Context menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 bg-card border border-border rounded shadow-lg py-1 min-w-[150px]"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          {canCreateSubfolder && (
+            <button
+              onClick={() => {
+                startCreatingSubfolder(folder.id);
+                setContextMenu(null);
+              }}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Добавить подпапку
+            </button>
+          )}
+          <button
+            onClick={() => {
+              onDeleteFolder(folder.id);
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-2 text-left text-sm hover:bg-muted text-red-500 flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Удалить
+          </button>
+        </div>
+      )}
+
       {/* Create subfolder form */}
       {creatingInFolderId === folder.id && (
         <form
@@ -455,6 +525,7 @@ function FolderItem({
               setCreatingInFolderId={setCreatingInFolderId}
               startCreatingSubfolder={startCreatingSubfolder}
               getFolderDepth={getFolderDepth}
+              onDeleteFolder={onDeleteFolder}
             />
           ))}
         </div>
