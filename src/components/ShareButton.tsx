@@ -30,6 +30,7 @@ export function ShareButton({ articleId }: Props) {
   const [copied, setCopied] = useState(false);
   const [expiresInDays, setExpiresInDays] = useState(0);
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   async function loadLinks() {
     const res = await fetch(`/api/articles/${articleId}/share`);
@@ -48,6 +49,7 @@ export function ShareButton({ articleId }: Props) {
 
   async function createLink() {
     setIsLoading(true);
+    setError(null);
     const body: { expiresInDays?: number; password?: string } = {};
     if (expiresInDays > 0) body.expiresInDays = expiresInDays;
     if (password) body.password = password;
@@ -61,6 +63,9 @@ export function ShareButton({ articleId }: Props) {
       await loadLinks();
       setExpiresInDays(0);
       setPassword("");
+    } else {
+      const data = await res.json();
+      setError(data.error || "Ошибка создания ссылки");
     }
     setIsLoading(false);
   }
@@ -133,6 +138,11 @@ export function ShareButton({ articleId }: Props) {
             </div>
 
             <div className="p-4">
+              {error && (
+                <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg">
+                  {error}
+                </div>
+              )}
               {isLoading ? (
                 <div className="text-center py-4 text-muted-foreground">
                   Загрузка...

@@ -66,8 +66,13 @@ export default async function ArticlePage({ params }: Props) {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{article.title}</h1>
-            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
               <span>{article.author.name || article.author.email}</span>
+              {article.publishedAt && (
+                <span>
+                  Опубликовано: {new Date(article.publishedAt).toLocaleDateString("ru-RU")}
+                </span>
+              )}
               <span>
                 Обновлено: {new Date(article.updatedAt).toLocaleDateString("ru-RU")}
               </span>

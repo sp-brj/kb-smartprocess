@@ -52,6 +52,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: "Article not found" }, { status: 404 });
   }
 
+  // Запрещаем создание публичной ссылки на черновик
+  if (article.status === "DRAFT") {
+    return NextResponse.json(
+      { error: "Нельзя создать публичную ссылку на черновик. Сначала опубликуйте статью." },
+      { status: 400 }
+    );
+  }
+
   // Получаем параметры из тела запроса (опционально)
   let expiresAt: Date | null = null;
   let password: string | null = null;

@@ -8,6 +8,7 @@ import rehypeRaw from "rehype-raw";
 import { WikilinkAutocomplete } from "./WikilinkAutocomplete";
 import { TagSelector } from "./TagSelector";
 import { ImageUploadButton } from "./ImageUploadButton";
+import { FileUploadButton } from "./FileUploadButton";
 
 interface Folder {
   id: string;
@@ -1001,6 +1002,11 @@ export function ArticleEditor({ article }: Props) {
               </button>
               {/* Изображение */}
               <ImageUploadButton
+                onUpload={insertImageMarkdown}
+                articleId={article?.id}
+              />
+              {/* Файл/вложение */}
+              <FileUploadButton
                 onUpload={insertImageMarkdown}
                 articleId={article?.id}
               />

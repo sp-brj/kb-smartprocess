@@ -142,7 +142,13 @@ export async function PATCH(
       if (title !== undefined) data.title = title;
       if (content !== undefined) data.content = content;
       if (folderId !== undefined) data.folderId = folderId || null;
-      if (status !== undefined) data.status = status;
+      if (status !== undefined) {
+        data.status = status;
+        // Устанавливаем дату публикации при первой публикации
+        if (status === "PUBLISHED" && currentArticle.status === "DRAFT" && !currentArticle.publishedAt) {
+          data.publishedAt = new Date();
+        }
+      }
 
       const updatedArticle = await tx.article.update({
         where: { id },

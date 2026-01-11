@@ -51,17 +51,18 @@ model Folder {
 }
 
 model Article {
-  id        String   @id @default(cuid())
-  title     String
-  content   String   @db.Text
-  slug      String   @unique
-  status    Status   @default(DRAFT)
-  folderId  String?
-  folder    Folder?  @relation(fields: [folderId], references: [id])
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  title       String
+  content     String    @db.Text
+  slug        String    @unique
+  status      Status    @default(DRAFT)
+  publishedAt DateTime?
+  folderId    String?
+  folder      Folder?   @relation(fields: [folderId], references: [id])
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   shareLinks    ShareLink[]
   outgoingLinks ArticleLink[]    @relation("OutgoingLinks")
@@ -69,6 +70,7 @@ model Article {
   tags          ArticleTag[]
   versions      ArticleVersion[]
   images        Image[]
+  attachments   Attachment[]
 }
 
 enum Status {
@@ -190,6 +192,25 @@ model Image {
   publicId   String   @unique // Cloudinary public_id
   url        String            // URL изображения
   caption    String?           // Подпись
+  articleId  String?           // Связь со статьёй (опционально)
+  article    Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  uploadedBy String            // ID пользователя
+  createdAt  DateTime @default(now())
+
+  @@index([articleId])
+}
+
+// =====================
+// ATTACHMENTS (FILES)
+// =====================
+
+model Attachment {
+  id         String   @id @default(cuid())
+  publicId   String   @unique // Cloudinary public_id
+  url        String            // URL файла
+  filename   String            // Оригинальное имя файла
+  filesize   Int               // Размер в байтах
+  mimetype   String            // MIME тип
   articleId  String?           // Связь со статьёй (опционально)
   article    Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
   uploadedBy String            // ID пользователя

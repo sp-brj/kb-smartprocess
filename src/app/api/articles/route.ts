@@ -137,6 +137,7 @@ export async function POST(request: NextRequest) {
           content: articleContent,
           slug,
           status: articleStatus,
+          publishedAt: articleStatus === "PUBLISHED" ? new Date() : null,
           folderId: folderId || null,
           authorId: session.user.id,
         },

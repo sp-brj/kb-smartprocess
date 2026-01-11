@@ -59,14 +59,26 @@ export default async function SharedArticlePage({ params }: Props) {
             <h1 className="text-3xl font-bold text-foreground mb-2">
               {article.title}
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Обновлено:{" "}
-              {new Date(article.updatedAt).toLocaleDateString("ru-RU", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </p>
+            <div className="text-sm text-muted-foreground space-y-1">
+              {article.publishedAt && (
+                <p>
+                  Опубликовано:{" "}
+                  {new Date(article.publishedAt).toLocaleDateString("ru-RU", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </p>
+              )}
+              <p>
+                Обновлено:{" "}
+                {new Date(article.updatedAt).toLocaleDateString("ru-RU", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
           </header>
 
           <ArticleContent content={article.content} />
