@@ -1,0 +1,50 @@
+# Проект: База Знаний (kb.smartprocess.ru)
+
+Next.js 15 + TypeScript + Prisma + PostgreSQL (Supabase) + NextAuth + Tailwind CSS
+
+## Деплой
+- GitHub: https://github.com/sp-brj/kb-smartprocess
+- Vercel автодеплой после пуша в main
+- URL: https://kb.smartprocess.ru
+
+## После завершения задачи
+
+Задача НЕ считается завершённой до деплоя. Последовательность:
+
+1. `npm run build` - проверка ошибок
+2. `npx playwright test --project=chromium` - E2E тесты (если dev сервер запущен)
+3. `npx tsx scripts/cleanup-test-data.ts` - очистка тестовых данных
+4. `git add -A && git commit -m "описание" && git push origin main` - коммит и пуш
+5. Только после пуша сообщить что готово
+
+НЕ спрашивать "закоммитить?" - просто делать.
+
+## Стандарты кода
+
+- ESLint: eslint-config-next (строгий на Vercel)
+- Не использовать setState напрямую в useEffect
+- Добавлять data-testid для UI элементов
+- Удалять неиспользуемые импорты
+
+## Структура
+
+- `/src/components/` - React компоненты
+- `/src/app/` - Next.js App Router
+- `/prisma/` - схема БД
+- `/e2e/` - Playwright тесты (Page Object Model)
+
+## Функционал
+
+- Wiki-ссылки: `[[статья]]` с автодополнением
+- Теги: TagSelector, TagCloud
+- История версий с diff и откатом
+- Экспорт: HTML, Word, PDF, печать
+- Публичный шаринг статей
+
+## API endpoints
+
+- `/api/articles/[id]/export/html|docx|pdf` - экспорт
+- `/api/articles/[id]/versions` - история
+- `/api/articles/[id]/tags` - теги
+- `/api/articles/[id]/backlinks` - обратные ссылки
+- `/api/articles/suggestions` - автодополнение
