@@ -106,7 +106,7 @@ export default async function ArticlePage({ params }: Props) {
 
       {/* Content */}
       <div className="bg-card rounded-lg shadow p-6">
-        <ArticleContent content={article.content} />
+        <ArticleContent content={article.content} articleId={article.id} />
         <BacklinksPanel articleId={article.id} />
       </div>
     </div>

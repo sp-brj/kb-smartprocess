@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -129,6 +129,42 @@ export function ArticleEditor({ article }: Props) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showHighlightPicker, showCalloutPicker]);
+
+  // Счётчик для отслеживания индекса чекбокса при рендере
+  const checkboxIndexRef = useRef(0);
+
+  // Функция для переключения чекбокса в markdown
+  const handleCheckboxToggle = useCallback((checkboxIndex: number) => {
+    let currentIndex = 0;
+    const newContent = content.replace(/- \[([ x])\]/g, (match, checked) => {
+      if (currentIndex === checkboxIndex) {
+        currentIndex++;
+        return checked === " " ? "- [x]" : "- [ ]";
+      }
+      currentIndex++;
+      return match;
+    });
+    setContent(newContent);
+  }, [content]);
+
+  // Компоненты для ReactMarkdown с интерактивными чекбоксами
+  const markdownComponents = useMemo(() => ({
+    input: ({ type, checked, ...props }: React.InputHTMLAttributes<HTMLInputElement>) => {
+      if (type === "checkbox") {
+        const index = checkboxIndexRef.current++;
+        return (
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={() => handleCheckboxToggle(index)}
+            className="cursor-pointer w-4 h-4 accent-primary"
+            {...props}
+          />
+        );
+      }
+      return <input type={type} checked={checked} {...props} />;
+    },
+  }), [handleCheckboxToggle]);
 
   // Получаем позицию курсора в textarea
   const getCaretCoordinates = useCallback(() => {
@@ -702,7 +738,8 @@ export function ArticleEditor({ article }: Props) {
       <div className="min-h-[400px] relative">
         {viewMode === "preview" ? (
           <div className="prose dark:prose-invert max-w-none p-4 bg-muted rounded min-h-[400px]">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+            {(() => { checkboxIndexRef.current = 0; return null; })()}
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={markdownComponents}>
               {content || "*Начните писать...*"}
             </ReactMarkdown>
           </div>
@@ -768,7 +805,8 @@ export function ArticleEditor({ article }: Props) {
                 Превью
               </div>
               <div className="prose dark:prose-invert max-w-none p-4 text-sm">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                {(() => { checkboxIndexRef.current = 0; return null; })()}
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={markdownComponents}>
                   {content || "*Начните писать...*"}
                 </ReactMarkdown>
               </div>
