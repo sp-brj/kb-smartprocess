@@ -42,6 +42,30 @@ interface AutocompleteState {
   startIndex: number;
 }
 
+// Цвета для выделения текста
+const HIGHLIGHT_COLORS = [
+  { name: "Без цвета", color: "" },
+  { name: "Красный", color: "#fee2e2", textColor: "#991b1b" },
+  { name: "Розовый", color: "#fce7f3", textColor: "#9d174d" },
+  { name: "Оранжевый", color: "#ffedd5", textColor: "#9a3412" },
+  { name: "Желтый", color: "#fef9c3", textColor: "#854d0e" },
+  { name: "Зеленый", color: "#dcfce7", textColor: "#166534" },
+  { name: "Бирюзовый", color: "#ccfbf1", textColor: "#115e59" },
+  { name: "Синий", color: "#dbeafe", textColor: "#1e40af" },
+  { name: "Фиолетовый", color: "#f3e8ff", textColor: "#6b21a8" },
+  { name: "Серый", color: "#f3f4f6", textColor: "#374151" },
+];
+
+// Цвета для callout блоков
+const CALLOUT_COLORS = [
+  { name: "Зеленый (успех)", color: "#166534", bgColor: "#dcfce7", borderColor: "#16a34a" },
+  { name: "Красный (важно)", color: "#991b1b", bgColor: "#fee2e2", borderColor: "#dc2626" },
+  { name: "Желтый (внимание)", color: "#854d0e", bgColor: "#fef9c3", borderColor: "#ca8a04" },
+  { name: "Синий (инфо)", color: "#1e40af", bgColor: "#dbeafe", borderColor: "#2563eb" },
+  { name: "Фиолетовый (подсказка)", color: "#6b21a8", bgColor: "#f3e8ff", borderColor: "#9333ea" },
+  { name: "Серый (примечание)", color: "#374151", bgColor: "#f3f4f6", borderColor: "#6b7280" },
+];
+
 export function ArticleEditor({ article }: Props) {
   const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -54,10 +78,14 @@ export function ArticleEditor({ article }: Props) {
   const [selectedTags, setSelectedTags] = useState<Tag[]>(article?.tags || []);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [saving, setSaving] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [viewMode, setViewMode] = useState<"editor" | "preview" | "split">("editor");
   const [autocomplete, setAutocomplete] = useState<AutocompleteState | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [showHighlightPicker, setShowHighlightPicker] = useState(false);
+  const [showCalloutPicker, setShowCalloutPicker] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
 
   useEffect(() => {
     fetch("/api/folders")
@@ -85,6 +113,21 @@ export function ArticleEditor({ article }: Props) {
       }
     }
   }, [article]);
+
+  // Закрытие picker при клике вне
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (showHighlightPicker && !target.closest("[data-highlight-picker]")) {
+        setShowHighlightPicker(false);
+      }
+      if (showCalloutPicker && !target.closest("[data-callout-picker]")) {
+        setShowCalloutPicker(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showHighlightPicker, showCalloutPicker]);
 
   // Получаем позицию курсора в textarea
   const getCaretCoordinates = useCallback(() => {
@@ -235,6 +278,159 @@ export function ArticleEditor({ article }: Props) {
         const selectEnd = selectStart + 3; // "код"
         textarea.setSelectionRange(selectStart, selectEnd);
       }
+    }, 0);
+  }
+
+  // Функция для выделения текста цветом
+  function insertHighlight(bgColor: string, textColor?: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.slice(start, end);
+    const textToInsert = selectedText || "выделенный текст";
+
+    const before = content.slice(0, start);
+    const after = content.slice(end);
+
+    let newContent: string;
+    if (!bgColor) {
+      // Убрать выделение - просто вставить текст без тегов
+      newContent = `${before}${textToInsert}${after}`;
+    } else {
+      const style = textColor
+        ? `background-color: ${bgColor}; color: ${textColor}; padding: 2px 4px; border-radius: 3px;`
+        : `background-color: ${bgColor}; padding: 2px 4px; border-radius: 3px;`;
+      newContent = `${before}<mark style="${style}">${textToInsert}</mark>${after}`;
+    }
+
+    setContent(newContent);
+    setShowHighlightPicker(false);
+
+    setTimeout(() => {
+      textarea.focus();
+    }, 0);
+  }
+
+  // Функция для вставки callout блока
+  function insertCallout(textColor: string, bgColor: string, borderColor: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.slice(start, end);
+    const textToInsert = selectedText || "Текст блока";
+
+    const before = content.slice(0, start);
+    const after = content.slice(end);
+
+    const style = `background-color: ${bgColor}; color: ${textColor}; border-left: 4px solid ${borderColor}; padding: 12px 16px; border-radius: 4px; margin: 8px 0;`;
+    const calloutHtml = `\n<div style="${style}">\n\n${textToInsert}\n\n</div>\n`;
+
+    const newContent = `${before}${calloutHtml}${after}`;
+    setContent(newContent);
+    setShowCalloutPicker(false);
+
+    setTimeout(() => {
+      textarea.focus();
+    }, 0);
+  }
+
+  // Функция для вставки таблицы
+  function insertTable() {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const before = content.slice(0, start);
+    const after = content.slice(start);
+
+    const tableMarkdown = `
+| Заголовок 1 | Заголовок 2 | Заголовок 3 |
+|-------------|-------------|-------------|
+| Ячейка 1    | Ячейка 2    | Ячейка 3    |
+| Ячейка 4    | Ячейка 5    | Ячейка 6    |
+`;
+
+    const newContent = `${before}${tableMarkdown}${after}`;
+    setContent(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+    }, 0);
+  }
+
+  // Функция для вставки видео (YouTube, VK, Rutube)
+  function insertVideo() {
+    const textarea = textareaRef.current;
+    if (!textarea || !videoUrl.trim()) return;
+
+    const url = videoUrl.trim();
+    let embedHtml = "";
+
+    // YouTube
+    const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+    if (youtubeMatch) {
+      const videoId = youtubeMatch[1];
+      embedHtml = `<iframe width="100%" height="400" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="border-radius: 8px; margin: 16px 0;"></iframe>`;
+    }
+
+    // VK Video
+    const vkMatch = url.match(/vk\.com\/video(-?\d+)_(\d+)/);
+    if (vkMatch) {
+      const ownerId = vkMatch[1];
+      const videoId = vkMatch[2];
+      embedHtml = `<iframe width="100%" height="400" src="https://vk.com/video_ext.php?oid=${ownerId}&id=${videoId}" frameborder="0" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen style="border-radius: 8px; margin: 16px 0;"></iframe>`;
+    }
+
+    // Rutube
+    const rutubeMatch = url.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
+    if (rutubeMatch) {
+      const videoId = rutubeMatch[1];
+      embedHtml = `<iframe width="100%" height="400" src="https://rutube.ru/play/embed/${videoId}" frameborder="0" allow="clipboard-write; autoplay" allowfullscreen style="border-radius: 8px; margin: 16px 0;"></iframe>`;
+    }
+
+    if (!embedHtml) {
+      alert("Не удалось распознать ссылку. Поддерживаются: YouTube, VK Video, Rutube");
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const before = content.slice(0, start);
+    const after = content.slice(start);
+
+    const newContent = `${before}\n${embedHtml}\n${after}`;
+    setContent(newContent);
+    setShowVideoModal(false);
+    setVideoUrl("");
+
+    setTimeout(() => {
+      textarea.focus();
+    }, 0);
+  }
+
+  // Функция для вставки сворачиваемого блока
+  function insertDetailsBlock() {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.slice(start, end);
+    const summaryText = selectedText || "Заголовок";
+
+    const before = content.slice(0, start);
+    const after = content.slice(end);
+
+    const detailsHtml = `\n<details style="border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; margin: 8px 0;">\n<summary style="cursor: pointer; font-weight: 500;">${summaryText}</summary>\n\nСодержимое блока\n\n</details>\n`;
+
+    const newContent = `${before}${detailsHtml}${after}`;
+    setContent(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
     }, 0);
   }
 
@@ -448,28 +644,118 @@ export function ArticleEditor({ article }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 bg-muted rounded p-1">
           <button
             type="button"
-            onClick={() => setShowPreview(!showPreview)}
-            className={`px-3 py-2 text-sm rounded ${
-              showPreview
-                ? "bg-primary/10 text-primary"
-                : "bg-muted text-muted-foreground"
+            onClick={() => setViewMode("editor")}
+            className={`px-3 py-1.5 text-sm rounded transition-colors ${
+              viewMode === "editor"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {showPreview ? "Редактор" : "Превью"}
+            Редактор
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("split")}
+            className={`px-3 py-1.5 text-sm rounded transition-colors ${
+              viewMode === "split"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Split
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("preview")}
+            className={`px-3 py-1.5 text-sm rounded transition-colors ${
+              viewMode === "preview"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Превью
           </button>
         </div>
       </div>
 
       {/* Editor / Preview */}
       <div className="min-h-[400px] relative">
-        {showPreview ? (
+        {viewMode === "preview" ? (
           <div className="prose dark:prose-invert max-w-none p-4 bg-muted rounded min-h-[400px]">
             <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
               {content || "*Начните писать...*"}
             </ReactMarkdown>
+          </div>
+        ) : viewMode === "split" ? (
+          <div className="grid grid-cols-2 gap-4 min-h-[400px]">
+            {/* Левая часть - редактор */}
+            <div className="flex flex-col">
+              {/* Панель форматирования для split */}
+              <div className="flex flex-wrap items-center gap-1 p-2 bg-muted border border-border rounded-t border-b-0">
+                <button type="button" onClick={() => insertFormatting("**", "**", "жирный")} className="p-1.5 hover:bg-card rounded text-foreground font-bold text-sm" title="Жирный">B</button>
+                <button type="button" onClick={() => insertFormatting("*", "*", "курсив")} className="p-1.5 hover:bg-card rounded text-foreground italic text-sm" title="Курсив">I</button>
+                <button type="button" onClick={() => insertLinePrefix("## ")} className="p-1.5 hover:bg-card rounded text-foreground text-xs font-bold" title="Заголовок">H2</button>
+                <button type="button" onClick={() => insertLinePrefix("- ")} className="p-1.5 hover:bg-card rounded text-foreground" title="Список">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                </button>
+                <ImageUploadButton onUpload={insertImageMarkdown} articleId={article?.id} />
+              </div>
+              <div
+                className="relative flex-1"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <textarea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={handleContentChange}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  placeholder="Содержимое статьи..."
+                  className={`w-full h-full min-h-[400px] px-3 py-2 border border-border rounded-t-none rounded-b font-mono text-sm resize-none bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary ${isDragging ? "border-primary border-2 bg-primary/5" : ""}`}
+                  data-testid="article-content-input"
+                />
+                {isDragging && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded pointer-events-none">
+                    <div className="text-primary font-medium text-sm">Отпустите для загрузки</div>
+                  </div>
+                )}
+                {isUploadingImage && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded pointer-events-none">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Загрузка...
+                    </div>
+                  </div>
+                )}
+              </div>
+              {autocomplete?.isOpen && (
+                <WikilinkAutocomplete
+                  query={autocomplete.query}
+                  position={autocomplete.position}
+                  onSelect={handleSelectSuggestion}
+                  onClose={() => setAutocomplete(null)}
+                />
+              )}
+            </div>
+            {/* Правая часть - превью */}
+            <div className="border border-border rounded bg-muted overflow-auto">
+              <div className="p-3 border-b border-border bg-card/50 text-xs text-muted-foreground font-medium">
+                Превью
+              </div>
+              <div className="prose dark:prose-invert max-w-none p-4 text-sm">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+                  {content || "*Начните писать...*"}
+                </ReactMarkdown>
+              </div>
+            </div>
           </div>
         ) : (
           <>
@@ -511,6 +797,39 @@ export function ArticleEditor({ article }: Props) {
               >
                 U
               </button>
+              {/* Выделение цветом */}
+              <div className="relative" data-highlight-picker>
+                <button
+                  type="button"
+                  onClick={() => setShowHighlightPicker(!showHighlightPicker)}
+                  className="p-2 hover:bg-card rounded text-foreground"
+                  title="Выделение цветом"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+                {showHighlightPicker && (
+                  <div className="absolute top-full left-0 mt-1 p-2 bg-card border border-border rounded-lg shadow-lg z-50 grid grid-cols-5 gap-1">
+                    {HIGHLIGHT_COLORS.map((c) => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => insertHighlight(c.color, c.textColor)}
+                        className="w-6 h-6 rounded-full border border-border hover:scale-110 transition-transform flex items-center justify-center"
+                        style={{ backgroundColor: c.color || "transparent" }}
+                        title={c.name}
+                      >
+                        {!c.color && (
+                          <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="w-px h-6 bg-border mx-1" />
 
@@ -573,6 +892,59 @@ export function ArticleEditor({ article }: Props) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                 </svg>
               </button>
+              {/* Чек-лист */}
+              <button
+                type="button"
+                onClick={() => insertLinePrefix("- [ ] ")}
+                className="p-2 hover:bg-card rounded text-foreground"
+                title="Чек-лист"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </button>
+              {/* Callout блок */}
+              <div className="relative" data-callout-picker>
+                <button
+                  type="button"
+                  onClick={() => setShowCalloutPicker(!showCalloutPicker)}
+                  className="p-2 hover:bg-card rounded text-foreground"
+                  title="Цветовой блок (callout)"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </button>
+                {showCalloutPicker && (
+                  <div className="absolute top-full left-0 mt-1 p-2 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[160px]">
+                    {CALLOUT_COLORS.map((c) => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => insertCallout(c.color, c.bgColor, c.borderColor)}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-muted rounded text-left text-sm"
+                      >
+                        <span
+                          className="w-4 h-4 rounded border"
+                          style={{ backgroundColor: c.bgColor, borderColor: c.borderColor }}
+                        />
+                        <span className="text-foreground">{c.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Сворачиваемый блок */}
+              <button
+                type="button"
+                onClick={insertDetailsBlock}
+                className="p-2 hover:bg-card rounded text-foreground"
+                title="Сворачиваемый блок"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
               <div className="w-px h-6 bg-border mx-1" />
 
@@ -592,6 +964,17 @@ export function ArticleEditor({ article }: Props) {
                 title="Блок кода"
               >
                 {"{ }"}
+              </button>
+              {/* Таблица */}
+              <button
+                type="button"
+                onClick={insertTable}
+                className="p-2 hover:bg-card rounded text-foreground"
+                title="Таблица"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M10 3v18M14 3v18M3 6a3 3 0 013-3h12a3 3 0 013 3v12a3 3 0 01-3 3H6a3 3 0 01-3-3V6z" />
+                </svg>
               </button>
 
               <div className="w-px h-6 bg-border mx-1" />
@@ -621,6 +1004,18 @@ export function ArticleEditor({ article }: Props) {
                 onUpload={insertImageMarkdown}
                 articleId={article?.id}
               />
+              {/* Видео */}
+              <button
+                type="button"
+                onClick={() => setShowVideoModal(true)}
+                className="p-2 hover:bg-card rounded text-foreground"
+                title="Вставить видео (YouTube, VK, Rutube)"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
 
               <div className="w-px h-6 bg-border mx-1" />
 
@@ -706,6 +1101,46 @@ export function ArticleEditor({ article }: Props) {
           {saving ? "Сохранение..." : article ? "Сохранить" : "Создать"}
         </button>
       </div>
+
+      {/* Модальное окно вставки видео */}
+      {showVideoModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Вставить видео</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Поддерживаются: YouTube, VK Video, Rutube
+            </p>
+            <input
+              type="url"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="Вставьте ссылку на видео..."
+              className="w-full px-3 py-2 border border-border rounded bg-background text-foreground mb-4 focus:outline-none focus:ring-2 focus:ring-primary"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowVideoModal(false);
+                  setVideoUrl("");
+                }}
+                className="px-4 py-2 text-muted-foreground hover:text-foreground"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={insertVideo}
+                disabled={!videoUrl.trim()}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded hover:opacity-90 disabled:opacity-50"
+              >
+                Вставить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

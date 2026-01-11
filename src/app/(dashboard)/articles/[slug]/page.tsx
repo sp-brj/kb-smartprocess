@@ -6,6 +6,7 @@ import { DeleteArticleButton } from "@/components/DeleteArticleButton";
 import { ShareButton } from "@/components/ShareButton";
 import { BacklinksPanel } from "@/components/BacklinksPanel";
 import { HistoryButton } from "@/components/HistoryButton";
+import { ExportButton } from "@/components/ExportButton";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -71,6 +72,7 @@ export default async function ArticlePage({ params }: Props) {
             </div>
           </div>
           <div className="flex gap-2">
+            <ExportButton articleId={article.id} articleTitle={article.title} />
             <HistoryButton articleId={article.id} articleSlug={article.slug} />
             <ShareButton articleId={article.id} />
             <Link
