@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { VersionHistoryModal } from "./VersionHistoryModal";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 
 export function HistoryButton({ articleId, articleSlug }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
 
   return (
     <>
@@ -26,6 +28,7 @@ export function HistoryButton({ articleId, articleSlug }: Props) {
           articleId={articleId}
           articleSlug={articleSlug}
           onClose={() => setIsOpen(false)}
+          onRevert={() => router.refresh()}
         />
       )}
     </>

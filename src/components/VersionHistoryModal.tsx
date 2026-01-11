@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { VersionDiffViewer } from "./VersionDiffViewer";
 
 interface Version {
   id: string;
@@ -21,13 +22,14 @@ interface Props {
   articleId: string;
   articleSlug: string;
   onClose: () => void;
+  onRevert?: () => void;
 }
 
-export function VersionHistoryModal({ articleId, onClose }: Props) {
-  // articleSlug reserved for future use (e.g., navigation to version)
+export function VersionHistoryModal({ articleId, onClose, onRevert }: Props) {
   const [versions, setVersions] = useState<Version[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
+  const [reverting, setReverting] = useState(false);
 
   useEffect(() => {
     async function fetchVersions() {
@@ -69,6 +71,30 @@ export function VersionHistoryModal({ articleId, onClose }: Props) {
     }
   }
 
+  async function handleRevert(versionId: string) {
+    if (!confirm("Откатить статью к этой версии? Текущая версия будет сохранена в истории.")) {
+      return;
+    }
+    setReverting(true);
+    try {
+      const res = await fetch(`/api/articles/${articleId}/versions/${versionId}/revert`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        onRevert?.();
+        onClose();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Ошибка при откате");
+      }
+    } catch (error) {
+      console.error("Failed to revert:", error);
+      alert("Ошибка при откате");
+    } finally {
+      setReverting(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
       <div
@@ -105,21 +131,12 @@ export function VersionHistoryModal({ articleId, onClose }: Props) {
                 </svg>
                 Назад к списку
               </button>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-medium text-foreground">
-                    Версия {selectedVersion.version}: {selectedVersion.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDate(selectedVersion.createdAt)} • {selectedVersion.author.name || selectedVersion.author.email}
-                  </p>
-                </div>
-                <div className="bg-muted p-4 rounded-lg">
-                  <pre className="whitespace-pre-wrap text-sm text-foreground">
-                    {selectedVersion.content}
-                  </pre>
-                </div>
-              </div>
+              <VersionDiffViewer
+                articleId={articleId}
+                versionId={selectedVersion.id}
+                onRevert={() => handleRevert(selectedVersion.id)}
+                reverting={reverting}
+              />
             </div>
           ) : (
             <div className="space-y-2">
