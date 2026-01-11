@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { TagCloud } from "./TagCloud";
 import { RecentArticles } from "./RecentArticles";
+import { StatsWidget } from "./analytics/StatsWidget";
 
 interface Folder {
   id: string;
@@ -285,6 +286,7 @@ export function Sidebar() {
         </nav>
       </div>
       <RecentArticles />
+      <StatsWidget />
       <TagCloud />
       <div className="p-4 border-t border-border">
         <ThemeToggle />

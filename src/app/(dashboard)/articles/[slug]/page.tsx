@@ -8,6 +8,7 @@ import { BacklinksPanel } from "@/components/BacklinksPanel";
 import { HistoryButton } from "@/components/HistoryButton";
 import { ExportButton } from "@/components/ExportButton";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { ArticleViewTracker } from "@/components/ArticleViewTracker";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -59,45 +60,46 @@ export default async function ArticlePage({ params }: Props) {
 
   return (
     <div className="max-w-4xl">
+      <ArticleViewTracker articleId={article.id} />
       <Breadcrumbs items={breadcrumbItems} />
 
       {/* Header */}
       <div className="bg-card rounded-lg shadow p-6 mb-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
+        <div className="mb-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
             <h1 className="text-3xl font-bold text-foreground">{article.title}</h1>
-            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
-              <span>{article.author.name || article.author.email}</span>
-              {article.publishedAt && (
-                <span>
-                  Опубликовано: {new Date(article.publishedAt).toLocaleDateString("ru-RU")}
-                </span>
-              )}
-              <span>
-                Обновлено: {new Date(article.updatedAt).toLocaleDateString("ru-RU")}
-              </span>
-              <span
-                className={`px-2 py-0.5 rounded ${
-                  article.status === "PUBLISHED"
-                    ? "bg-green-600/20 text-green-500 dark:bg-green-500/20 dark:text-green-400"
-                    : "bg-yellow-600/20 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400"
-                }`}
+            <div className="flex gap-2 flex-wrap">
+              <ExportButton articleId={article.id} articleTitle={article.title} />
+              <HistoryButton articleId={article.id} articleSlug={article.slug} />
+              <ShareButton articleId={article.id} />
+              <Link
+                href={`/articles/${article.slug}/edit`}
+                className="px-4 py-2 text-sm bg-muted text-foreground rounded hover:bg-border"
               >
-                {article.status === "PUBLISHED" ? "Опубликовано" : "Черновик"}
-              </span>
+                Редактировать
+              </Link>
+              <DeleteArticleButton articleId={article.id} />
             </div>
           </div>
-          <div className="flex gap-2">
-            <ExportButton articleId={article.id} articleTitle={article.title} />
-            <HistoryButton articleId={article.id} articleSlug={article.slug} />
-            <ShareButton articleId={article.id} />
-            <Link
-              href={`/articles/${article.slug}/edit`}
-              className="px-4 py-2 text-sm bg-muted text-foreground rounded hover:bg-border"
+          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
+            <span>{article.author.name || article.author.email}</span>
+            {article.publishedAt && (
+              <span>
+                Опубликовано: {new Date(article.publishedAt).toLocaleDateString("ru-RU")}
+              </span>
+            )}
+            <span>
+              Обновлено: {new Date(article.updatedAt).toLocaleDateString("ru-RU")}
+            </span>
+            <span
+              className={`px-2 py-0.5 rounded ${
+                article.status === "PUBLISHED"
+                  ? "bg-green-600/20 text-green-500 dark:bg-green-500/20 dark:text-green-400"
+                  : "bg-yellow-600/20 text-yellow-600 dark:bg-yellow-500/20 dark:text-yellow-400"
+              }`}
             >
-              Редактировать
-            </Link>
-            <DeleteArticleButton articleId={article.id} />
+              {article.status === "PUBLISHED" ? "Опубликовано" : "Черновик"}
+            </span>
           </div>
         </div>
       </div>

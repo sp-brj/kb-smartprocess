@@ -227,28 +227,44 @@ export function ArticleEditor({ article }: Props) {
   }
 
   // Функция для вставки в начало строки (заголовки, списки)
-  function insertLinePrefix(prefix: string) {
+  function insertLinePrefix(prefix: string, isNumberedList: boolean = false, isCheckList: boolean = false) {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
 
-    // Находим начало текущей строки
+    // Находим начало первой выделенной строки
     const lineStart = content.lastIndexOf("\n", start - 1) + 1;
+    // Находим конец последней выделенной строки
     const lineEnd = content.indexOf("\n", end);
     const actualLineEnd = lineEnd === -1 ? content.length : lineEnd;
 
     const before = content.slice(0, lineStart);
-    const line = content.slice(lineStart, actualLineEnd);
+    const selectedLines = content.slice(lineStart, actualLineEnd);
     const after = content.slice(actualLineEnd);
 
-    const newContent = `${before}${prefix}${line}${after}`;
+    // Разбиваем на строки и добавляем префикс к каждой
+    const lines = selectedLines.split("\n");
+    const formattedLines = lines.map((line, index) => {
+      // Пропускаем пустые строки
+      if (line.trim() === "") return line;
+
+      if (isNumberedList) {
+        return `${index + 1}. ${line}`;
+      } else if (isCheckList) {
+        return `- [ ] ${line}`;
+      } else {
+        return `${prefix}${line}`;
+      }
+    });
+
+    const newContent = `${before}${formattedLines.join("\n")}${after}`;
     setContent(newContent);
 
     setTimeout(() => {
       textarea.focus();
-      const newPos = lineStart + prefix.length + line.length;
+      const newPos = before.length + formattedLines.join("\n").length;
       textarea.setSelectionRange(newPos, newPos);
     }, 0);
   }
@@ -875,7 +891,7 @@ export function ArticleEditor({ article }: Props) {
               </button>
               <button
                 type="button"
-                onClick={() => insertLinePrefix("1. ")}
+                onClick={() => insertLinePrefix("", true, false)}
                 className="p-2 hover:bg-card rounded text-foreground"
                 title="Нумерованный список"
               >
@@ -896,7 +912,7 @@ export function ArticleEditor({ article }: Props) {
               {/* Чек-лист */}
               <button
                 type="button"
-                onClick={() => insertLinePrefix("- [ ] ")}
+                onClick={() => insertLinePrefix("", false, true)}
                 className="p-2 hover:bg-card rounded text-foreground"
                 title="Чек-лист"
               >

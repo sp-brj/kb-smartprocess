@@ -25,6 +25,8 @@ model User {
 
   articles        Article[]
   articleVersions ArticleVersion[] @relation("VersionAuthor")
+  articleViews    ArticleView[]
+  searchQueries   SearchQuery[]
 }
 
 enum Role {
@@ -71,6 +73,7 @@ model Article {
   versions      ArticleVersion[]
   images        Image[]
   attachments   Attachment[]
+  views         ArticleView[]
 }
 
 enum Status {
@@ -217,4 +220,44 @@ model Attachment {
   createdAt  DateTime @default(now())
 
   @@index([articleId])
+}
+
+// =====================
+// ANALYTICS
+// =====================
+
+model ArticleView {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessionId String?
+  ip        String?  // хешированный IP
+  userAgent String?
+  referrer  String?
+  duration  Int?     // секунды на странице
+  createdAt DateTime @default(now())
+
+  @@index([articleId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([articleId, createdAt])
+}
+
+model SearchQuery {
+  id               String   @id @default(cuid())
+  query            String   // нормализованный (lowercase)
+  queryRaw         String   // оригинальный запрос
+  resultsCount     Int
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessionId        String?
+  clickedArticleId String?  // для CTR
+  createdAt        DateTime @default(now())
+
+  @@index([query])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([resultsCount])
 }

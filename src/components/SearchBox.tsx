@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -12,13 +12,47 @@ interface SearchResult {
   folder: { name: string; slug: string } | null;
 }
 
+function getSessionId() {
+  let sessionId = sessionStorage.getItem("analytics_session");
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    sessionStorage.setItem("analytics_session", sessionId);
+  }
+  return sessionId;
+}
+
 export function SearchBox() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastTrackedQuery = useRef<string>("");
   const router = useRouter();
+
+  // Трекинг поискового запроса
+  const trackSearch = useCallback((searchQuery: string, resultsCount: number, clickedArticleId?: string) => {
+    if (searchQuery.trim().length < 2) return;
+
+    fetch("/api/analytics/track/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: searchQuery,
+        resultsCount,
+        sessionId: getSessionId(),
+        clickedArticleId,
+      }),
+    }).catch(() => {
+      // Игнорируем ошибки трекинга
+    });
+  }, []);
+
+  // Трекинг клика по результату
+  const handleResultClick = useCallback((articleId: string) => {
+    trackSearch(query, results.length, articleId);
+    setIsOpen(false);
+  }, [query, results.length, trackSearch]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -45,6 +79,12 @@ export function SearchBox() {
           const data = await res.json();
           setResults(data.articles);
           setIsOpen(true);
+
+          // Трекинг поиска (только если запрос изменился)
+          if (query !== lastTrackedQuery.current) {
+            lastTrackedQuery.current = query;
+            trackSearch(query, data.articles.length);
+          }
         }
       } finally {
         setIsLoading(false);
@@ -52,7 +92,7 @@ export function SearchBox() {
     }, 300);
 
     return () => clearTimeout(debounce);
-  }, [query]);
+  }, [query, trackSearch]);
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && query.trim()) {
@@ -103,7 +143,7 @@ export function SearchBox() {
             <Link
               key={result.id}
               href={`/articles/${result.slug}`}
-              onClick={() => setIsOpen(false)}
+              onClick={() => handleResultClick(result.id)}
               className="block p-3 hover:bg-muted border-b border-border last:border-b-0"
               data-testid={`search-result-${result.slug}`}
             >
