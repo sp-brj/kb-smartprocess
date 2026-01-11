@@ -23,6 +23,12 @@
 # misc
 .DS_Store
 *.pem
+CLAUDE.md
+ARCHITECTURE.md
+
+# playwright
+/playwright-report/
+/test-results/
 
 # debug
 npm-debug.log*
