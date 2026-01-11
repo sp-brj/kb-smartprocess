@@ -146,6 +146,114 @@ export function ArticleEditor({ article }: Props) {
     }, 0);
   }
 
+  // Функция форматирования текста
+  function insertFormatting(prefix: string, suffix: string = prefix, placeholder: string = "") {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.slice(start, end);
+    const textToInsert = selectedText || placeholder;
+
+    const before = content.slice(0, start);
+    const after = content.slice(end);
+    const newContent = `${before}${prefix}${textToInsert}${suffix}${after}`;
+
+    setContent(newContent);
+
+    // Восстановить фокус и выделение
+    setTimeout(() => {
+      textarea.focus();
+      if (selectedText) {
+        // Если был выделен текст, ставим курсор после
+        const newPos = start + prefix.length + textToInsert.length + suffix.length;
+        textarea.setSelectionRange(newPos, newPos);
+      } else {
+        // Если текста не было, выделяем placeholder
+        const selectStart = start + prefix.length;
+        const selectEnd = selectStart + textToInsert.length;
+        textarea.setSelectionRange(selectStart, selectEnd);
+      }
+    }, 0);
+  }
+
+  // Функция для вставки в начало строки (заголовки, списки)
+  function insertLinePrefix(prefix: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    // Находим начало текущей строки
+    const lineStart = content.lastIndexOf("\n", start - 1) + 1;
+    const lineEnd = content.indexOf("\n", end);
+    const actualLineEnd = lineEnd === -1 ? content.length : lineEnd;
+
+    const before = content.slice(0, lineStart);
+    const line = content.slice(lineStart, actualLineEnd);
+    const after = content.slice(actualLineEnd);
+
+    const newContent = `${before}${prefix}${line}${after}`;
+    setContent(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = lineStart + prefix.length + line.length;
+      textarea.setSelectionRange(newPos, newPos);
+    }, 0);
+  }
+
+  // Функция для вставки блока кода
+  function insertCodeBlock() {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.slice(start, end);
+
+    const before = content.slice(0, start);
+    const after = content.slice(end);
+
+    const codeBlock = selectedText
+      ? `\`\`\`\n${selectedText}\n\`\`\``
+      : "```\nкод\n```";
+
+    const newContent = `${before}${codeBlock}${after}`;
+    setContent(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      if (!selectedText) {
+        const selectStart = start + 4; // после ```\n
+        const selectEnd = selectStart + 3; // "код"
+        textarea.setSelectionRange(selectStart, selectEnd);
+      }
+    }, 0);
+  }
+
+  // Обработка горячих клавиш
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.ctrlKey || e.metaKey) {
+      switch (e.key.toLowerCase()) {
+        case "b":
+          e.preventDefault();
+          insertFormatting("**", "**", "жирный");
+          break;
+        case "i":
+          e.preventDefault();
+          insertFormatting("*", "*", "курсив");
+          break;
+        case "k":
+          e.preventDefault();
+          insertFormatting("[", "](url)", "текст ссылки");
+          break;
+      }
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
@@ -258,12 +366,163 @@ export function ArticleEditor({ article }: Props) {
           </div>
         ) : (
           <>
+            {/* Панель форматирования */}
+            <div className="flex flex-wrap items-center gap-1 p-2 bg-muted border border-border rounded-t border-b-0">
+              {/* Жирный */}
+              <button
+                type="button"
+                onClick={() => insertFormatting("**", "**", "жирный")}
+                className="p-2 hover:bg-card rounded text-foreground font-bold"
+                title="Жирный (Ctrl+B)"
+              >
+                B
+              </button>
+              {/* Курсив */}
+              <button
+                type="button"
+                onClick={() => insertFormatting("*", "*", "курсив")}
+                className="p-2 hover:bg-card rounded text-foreground italic"
+                title="Курсив (Ctrl+I)"
+              >
+                I
+              </button>
+              {/* Зачёркнутый */}
+              <button
+                type="button"
+                onClick={() => insertFormatting("~~", "~~", "зачёркнутый")}
+                className="p-2 hover:bg-card rounded text-foreground line-through"
+                title="Зачёркнутый"
+              >
+                S
+              </button>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* Заголовки */}
+              <button
+                type="button"
+                onClick={() => insertLinePrefix("# ")}
+                className="p-2 hover:bg-card rounded text-foreground text-sm font-bold"
+                title="Заголовок 1"
+              >
+                H1
+              </button>
+              <button
+                type="button"
+                onClick={() => insertLinePrefix("## ")}
+                className="p-2 hover:bg-card rounded text-foreground text-sm font-bold"
+                title="Заголовок 2"
+              >
+                H2
+              </button>
+              <button
+                type="button"
+                onClick={() => insertLinePrefix("### ")}
+                className="p-2 hover:bg-card rounded text-foreground text-sm font-bold"
+                title="Заголовок 3"
+              >
+                H3
+              </button>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* Списки */}
+              <button
+                type="button"
+                onClick={() => insertLinePrefix("- ")}
+                className="p-2 hover:bg-card rounded text-foreground"
+                title="Маркированный список"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => insertLinePrefix("1. ")}
+                className="p-2 hover:bg-card rounded text-foreground"
+                title="Нумерованный список"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={() => insertLinePrefix("> ")}
+                className="p-2 hover:bg-card rounded text-foreground"
+                title="Цитата"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </button>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* Код */}
+              <button
+                type="button"
+                onClick={() => insertFormatting("`", "`", "код")}
+                className="p-2 hover:bg-card rounded text-foreground font-mono text-sm"
+                title="Инлайн код"
+              >
+                {"<>"}
+              </button>
+              <button
+                type="button"
+                onClick={insertCodeBlock}
+                className="p-2 hover:bg-card rounded text-foreground font-mono text-sm"
+                title="Блок кода"
+              >
+                {"{ }"}
+              </button>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* Ссылка */}
+              <button
+                type="button"
+                onClick={() => insertFormatting("[", "](url)", "текст ссылки")}
+                className="p-2 hover:bg-card rounded text-foreground"
+                title="Ссылка"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+              </button>
+              {/* Wiki-ссылка */}
+              <button
+                type="button"
+                onClick={() => insertFormatting("[[", "]]", "название статьи")}
+                className="p-2 hover:bg-card rounded text-primary font-bold text-sm"
+                title="Wiki-ссылка на статью"
+              >
+                [[]]
+              </button>
+
+              <div className="w-px h-6 bg-border mx-1" />
+
+              {/* Горизонтальная линия */}
+              <button
+                type="button"
+                onClick={() => insertFormatting("\n---\n", "", "")}
+                className="p-2 hover:bg-card rounded text-foreground"
+                title="Горизонтальная линия"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                </svg>
+              </button>
+            </div>
+
             <textarea
               ref={textareaRef}
               value={content}
               onChange={handleContentChange}
+              onKeyDown={handleKeyDown}
               placeholder="Содержимое статьи (поддерживается Markdown). Используйте [[название]] для ссылок на другие статьи."
-              className="w-full h-[400px] px-4 py-3 border border-border rounded font-mono text-sm resize-y bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full h-[400px] px-4 py-3 border border-border rounded-t-none rounded-b font-mono text-sm resize-y bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               data-testid="article-content-input"
             />
             {autocomplete?.isOpen && (
