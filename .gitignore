@@ -23,10 +23,9 @@
 # misc
 .DS_Store
 *.pem
-CLAUDE.md
-ARCHITECTURE.md
 
-# playwright
+# testing
+/coverage
 /playwright-report/
 /test-results/
 
