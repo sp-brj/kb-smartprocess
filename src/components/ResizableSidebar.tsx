@@ -133,51 +133,63 @@ export function ResizableSidebar() {
   const currentWidth = isCollapsed ? COLLAPSED_WIDTH : width;
 
   return (
-    <div
-      className="relative flex transition-all duration-300 ease-in-out"
-      style={{ width: currentWidth }}
-      data-testid="resizable-sidebar"
-    >
-      {/* Collapsed toggle button */}
-      {isCollapsed && (
-        <button
-          onClick={toggleCollapsed}
-          className="absolute left-2 top-3 z-20 p-2 rounded-md bg-card border border-border hover:bg-muted transition-colors"
-          title="Развернуть сайдбар (Ctrl+B)"
-          data-testid="sidebar-expand-btn"
-        >
-          <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      )}
+    <>
+      {/* Collapsed toggle button - positioned outside the collapsing container */}
+      <button
+        onClick={toggleCollapsed}
+        className={`fixed left-2 top-3 z-30 p-2 rounded-md bg-card border border-border hover:bg-muted transition-all duration-200 ${
+          isCollapsed ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
+        }`}
+        title="Развернуть сайдбар (Ctrl+B)"
+        data-testid="sidebar-expand-btn"
+      >
+        <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
 
-      {/* Sidebar content */}
-      <div className={`flex-1 overflow-hidden transition-opacity duration-300 ${isCollapsed ? "opacity-0 invisible" : "opacity-100 visible"}`}>
-        <Sidebar />
-        {/* Collapse button inside sidebar */}
-        <button
-          onClick={toggleCollapsed}
-          className="absolute top-3 right-3 z-20 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-          title="Скрыть сайдбар (Ctrl+B)"
-          data-testid="sidebar-collapse-btn"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Resizer handle - only when not collapsed */}
-      {!isCollapsed && (
+      <div
+        className="relative flex"
+        style={{
+          width: currentWidth,
+          transition: "width 200ms ease-out"
+        }}
+        data-testid="resizable-sidebar"
+      >
+        {/* Sidebar content */}
         <div
-          onMouseDown={handleMouseDown}
-          className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
-            isResizing ? "bg-primary" : "bg-transparent"
-          }`}
-          title="Потяните для изменения ширины"
-        />
-      )}
-    </div>
+          className="flex-1 overflow-hidden"
+          style={{
+            opacity: isCollapsed ? 0 : 1,
+            visibility: isCollapsed ? "hidden" : "visible",
+            transition: "opacity 150ms ease-out, visibility 150ms ease-out"
+          }}
+        >
+          <Sidebar />
+          {/* Collapse button inside sidebar */}
+          <button
+            onClick={toggleCollapsed}
+            className="absolute top-3 right-3 z-20 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            title="Скрыть сайдбар (Ctrl+B)"
+            data-testid="sidebar-collapse-btn"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Resizer handle - only when not collapsed */}
+        {!isCollapsed && (
+          <div
+            onMouseDown={handleMouseDown}
+            className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
+              isResizing ? "bg-primary" : "bg-transparent"
+            }`}
+            title="Потяните для изменения ширины"
+          />
+        )}
+      </div>
+    </>
   );
 }

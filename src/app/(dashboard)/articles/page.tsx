@@ -3,8 +3,16 @@ import Link from "next/link";
 import { ImportButton } from "@/components/ImportButton";
 import { ArticlesList } from "@/components/ArticlesList";
 
-export default async function ArticlesPage() {
+interface PageProps {
+  searchParams: Promise<{ noFolder?: string }>;
+}
+
+export default async function ArticlesPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const noFolder = params.noFolder === "true";
+
   const articles = await prisma.article.findMany({
+    where: noFolder ? { folderId: null } : undefined,
     include: {
       author: { select: { name: true, email: true } },
       folder: { select: { id: true, name: true, slug: true } },
@@ -23,10 +31,12 @@ export default async function ArticlesPage() {
     folderId: article.folderId,
   }));
 
+  const pageTitle = noFolder ? "Без папки" : "Все статьи";
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Все статьи</h1>
+        <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>
         <div className="flex gap-3">
           <ImportButton />
           <Link
@@ -40,13 +50,17 @@ export default async function ArticlesPage() {
 
       {articles.length === 0 ? (
         <div className="bg-card rounded-lg shadow p-8 text-center">
-          <p className="text-muted-foreground mb-4">Статей пока нет</p>
-          <Link
-            href="/articles/new"
-            className="inline-block bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-accent"
-          >
-            Создать первую статью
-          </Link>
+          <p className="text-muted-foreground mb-4">
+            {noFolder ? "Все статьи распределены по папкам" : "Статей пока нет"}
+          </p>
+          {!noFolder && (
+            <Link
+              href="/articles/new"
+              className="inline-block bg-primary text-primary-foreground px-4 py-2 rounded hover:bg-accent"
+            >
+              Создать первую статью
+            </Link>
+          )}
         </div>
       ) : (
         <ArticlesList initialArticles={serializedArticles} />

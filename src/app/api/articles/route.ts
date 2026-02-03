@@ -14,9 +14,14 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const folderId = searchParams.get("folderId");
   const status = searchParams.get("status");
+  const noFolder = searchParams.get("noFolder");
 
   const where: Record<string, unknown> = {};
-  if (folderId) where.folderId = folderId;
+  if (noFolder === "true") {
+    where.folderId = null;
+  } else if (folderId) {
+    where.folderId = folderId;
+  }
   if (status) where.status = status;
 
   const articles = await prisma.article.findMany({

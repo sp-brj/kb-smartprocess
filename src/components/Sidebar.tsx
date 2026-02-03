@@ -17,6 +17,8 @@ interface Folder {
 
 export function Sidebar() {
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [totalArticles, setTotalArticles] = useState(0);
+  const [articlesWithoutFolder, setArticlesWithoutFolder] = useState(0);
   const [isCreating, setIsCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [creatingInFolderId, setCreatingInFolderId] = useState<string | null>(null);
@@ -28,14 +30,24 @@ export function Sidebar() {
 
   useEffect(() => {
     let cancelled = false;
-    async function fetchFolders() {
-      const res = await fetch("/api/folders");
-      if (res.ok && !cancelled) {
-        const data = await res.json();
-        setFolders(data);
+    async function fetchData() {
+      const [foldersRes, statsRes] = await Promise.all([
+        fetch("/api/folders"),
+        fetch("/api/articles/stats")
+      ]);
+      if (!cancelled) {
+        if (foldersRes.ok) {
+          const data = await foldersRes.json();
+          setFolders(data);
+        }
+        if (statsRes.ok) {
+          const stats = await statsRes.json();
+          setTotalArticles(stats.total || 0);
+          setArticlesWithoutFolder(stats.withoutFolder || 0);
+        }
       }
     }
-    fetchFolders();
+    fetchData();
     return () => { cancelled = true; };
   }, [reloadCount]);
 
@@ -184,10 +196,21 @@ export function Sidebar() {
     return depth;
   }
 
+  // Calculate total articles count including subfolders
+  function getTotalArticlesCount(folder: Folder): number {
+    let count = folder._count.articles;
+    if (folder.children) {
+      for (const child of folder.children) {
+        count += getTotalArticlesCount(child);
+      }
+    }
+    return count;
+  }
+
   return (
     <aside className="w-full bg-card border-r border-border h-screen overflow-y-auto flex flex-col">
       <div className="p-4 flex-1">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 pr-8">
           <h2 className="font-semibold text-foreground">Папки</h2>
           <button
             onClick={() => {
@@ -240,16 +263,44 @@ export function Sidebar() {
           >
             <Link
               href="/articles"
-              className={`block px-3 py-2 rounded text-sm ${
-                pathname === "/articles"
+              className={`flex items-center justify-between px-3 py-2 rounded text-sm ${
+                pathname === "/articles" && !pathname.includes("?")
                   ? "bg-primary/10 text-primary"
                   : "text-foreground hover:bg-muted"
               }`}
               data-testid="all-articles-link"
             >
-              Все статьи
+              <span>Все статьи</span>
+              {totalArticles > 0 && (
+                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {totalArticles}
+                </span>
+              )}
             </Link>
           </div>
+
+          {/* "Без папки" - статьи без категории */}
+          {articlesWithoutFolder > 0 && (
+            <Link
+              href="/articles?noFolder=true"
+              className={`flex items-center justify-between px-3 py-2 rounded text-sm ${
+                pathname === "/articles" && typeof window !== "undefined" && window.location.search.includes("noFolder")
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+              data-testid="no-folder-link"
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Без папки
+              </span>
+              <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                {articlesWithoutFolder}
+              </span>
+            </Link>
+          )}
 
           {rootFolders.map((folder) => (
             <FolderItem
@@ -269,6 +320,7 @@ export function Sidebar() {
               startCreatingSubfolder={startCreatingSubfolder}
               getFolderDepth={getFolderDepth}
               onDeleteFolder={deleteFolder}
+              getTotalArticlesCount={getTotalArticlesCount}
             />
           ))}
         </nav>
@@ -295,6 +347,7 @@ interface FolderItemProps {
   startCreatingSubfolder: (id: string) => void;
   getFolderDepth: (folder: Folder) => number;
   onDeleteFolder: (folderId: string) => Promise<void>;
+  getTotalArticlesCount: (folder: Folder) => number;
 }
 
 function FolderItem({
@@ -313,6 +366,7 @@ function FolderItem({
   startCreatingSubfolder,
   getFolderDepth,
   onDeleteFolder,
+  getTotalArticlesCount,
 }: FolderItemProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -401,9 +455,9 @@ function FolderItem({
               </svg>
               <span className="truncate">{folder.name}</span>
             </span>
-            {folder._count.articles > 0 && (
+            {getTotalArticlesCount(folder) > 0 && (
               <span className="ml-2 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                {folder._count.articles}
+                {getTotalArticlesCount(folder)}
               </span>
             )}
           </Link>
@@ -514,6 +568,7 @@ function FolderItem({
               startCreatingSubfolder={startCreatingSubfolder}
               getFolderDepth={getFolderDepth}
               onDeleteFolder={onDeleteFolder}
+              getTotalArticlesCount={getTotalArticlesCount}
             />
           ))}
         </div>
