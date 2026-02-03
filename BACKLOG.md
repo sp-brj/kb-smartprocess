@@ -90,27 +90,28 @@
 
 ---
 
-## Фаза 4: Задачи
+## Фаза 4: Задачи ✅
 
 ### API
-- [ ] `GET /api/tasks` — список задач с фильтрами (projectId, assigneeId, status, priority)
-- [ ] `POST /api/tasks` — создать задачу
-- [ ] `GET /api/tasks/[id]` — детали задачи
-- [ ] `PATCH /api/tasks/[id]` — обновить задачу
-- [ ] `DELETE /api/tasks/[id]` — удалить задачу
-- [ ] `PATCH /api/tasks/[id]/status` — изменить статус (для канбана)
-- [ ] `PATCH /api/tasks/[id]/order` — изменить порядок (для канбана)
-- [ ] `GET /api/tasks/[id]/checklist` — чеклист задачи
-- [ ] `POST /api/tasks/[id]/checklist` — добавить пункт чеклиста
-- [ ] `PATCH /api/tasks/[id]/checklist/[itemId]` — обновить пункт (toggle completed)
-- [ ] `DELETE /api/tasks/[id]/checklist/[itemId]` — удалить пункт
+- [x] `GET /api/tasks` — список задач с фильтрами (projectId, assigneeId, status, priority, my)
+- [x] `POST /api/tasks` — создать задачу (с чеклистом)
+- [x] `GET /api/tasks/[id]` — детали задачи (с timeEntries)
+- [x] `PATCH /api/tasks/[id]` — обновить задачу
+- [x] `DELETE /api/tasks/[id]` — удалить задачу
+- [x] `PATCH /api/tasks/[id]/status` — изменить статус (для канбана)
+- [ ] `PATCH /api/tasks/[id]/order` — изменить порядок (отложено)
+- [x] `GET /api/tasks/[id]/checklist` — чеклист задачи
+- [x] `POST /api/tasks/[id]/checklist` — добавить пункт чеклиста
+- [x] `PATCH /api/tasks/[id]/checklist/[itemId]` — обновить пункт (toggle completed)
+- [x] `DELETE /api/tasks/[id]/checklist/[itemId]` — удалить пункт
 
 ### UI
-- [ ] Страница `/crm/tasks/page.tsx` — мои задачи (фильтр по assignee = текущий user)
-- [ ] Страница `/crm/projects/[id]/kanban/page.tsx` — канбан задач проекта
-- [ ] Модальное окно деталей задачи (или отдельная страница)
+- [x] Страница `/crm/tasks/page.tsx` — мои задачи (фильтр active/done/all)
+- [x] Страница `/crm/tasks/new/page.tsx` — создание задачи с чеклистом
+- [x] Страница `/crm/projects/[id]/kanban/page.tsx` — канбан задач проекта (drag-drop)
+- [ ] Модальное окно деталей задачи (отложено)
 
-### Компоненты
+### Компоненты (отложено — формы встроены в страницы)
 - [ ] `TaskForm.tsx` — форма задачи (проект, название, описание, исполнитель, дедлайн)
 - [ ] `TasksList.tsx` — таблица задач
 - [ ] `TaskCard.tsx` — карточка задачи для канбана
