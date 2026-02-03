@@ -19,6 +19,14 @@ type Payment = {
   date: string;
   type: "ADVANCE" | "MILESTONE" | "FINAL";
   status: "PENDING" | "RECEIVED" | "CANCELLED";
+  documentNumber: string | null;
+  description: string | null;
+};
+
+const paymentTypeLabels: Record<string, string> = {
+  ADVANCE: "Аванс",
+  MILESTONE: "Этап",
+  FINAL: "Финал",
 };
 
 type Project = {
@@ -89,6 +97,16 @@ export default function ProjectPage({
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: "",
+    date: new Date().toISOString().split("T")[0],
+    type: "MILESTONE" as "ADVANCE" | "MILESTONE" | "FINAL",
+    status: "PENDING" as "PENDING" | "RECEIVED" | "CANCELLED",
+    documentNumber: "",
+    description: "",
+  });
+  const [paymentSaving, setPaymentSaving] = useState(false);
 
   useEffect(() => {
     async function fetchProject() {
@@ -114,6 +132,79 @@ export default function ProjectPage({
     } else {
       const data = await res.json();
       alert(data.error || "Ошибка удаления");
+    }
+  }
+
+  async function handleAddPayment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!paymentForm.amount) return;
+
+    setPaymentSaving(true);
+    try {
+      const res = await fetch("/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: id,
+          ...paymentForm,
+        }),
+      });
+
+      if (res.ok) {
+        const newPayment = await res.json();
+        setProject((prev) =>
+          prev ? { ...prev, payments: [newPayment, ...prev.payments] } : null
+        );
+        setShowPaymentForm(false);
+        setPaymentForm({
+          amount: "",
+          date: new Date().toISOString().split("T")[0],
+          type: "MILESTONE",
+          status: "PENDING",
+          documentNumber: "",
+          description: "",
+        });
+        // Refresh to get updated totalPaid
+        const projectRes = await fetch(`/api/projects/${id}`);
+        if (projectRes.ok) {
+          setProject(await projectRes.json());
+        }
+      } else {
+        const data = await res.json();
+        alert(data.error || "Ошибка добавления оплаты");
+      }
+    } finally {
+      setPaymentSaving(false);
+    }
+  }
+
+  async function handleDeletePayment(paymentId: string) {
+    if (!confirm("Удалить оплату?")) return;
+
+    const res = await fetch(`/api/payments/${paymentId}`, { method: "DELETE" });
+    if (res.ok) {
+      // Refresh project to get updated data
+      const projectRes = await fetch(`/api/projects/${id}`);
+      if (projectRes.ok) {
+        setProject(await projectRes.json());
+      }
+    } else {
+      const data = await res.json();
+      alert(data.error || "Ошибка удаления");
+    }
+  }
+
+  async function handleUpdatePaymentStatus(paymentId: string, newStatus: "PENDING" | "RECEIVED" | "CANCELLED") {
+    const res = await fetch(`/api/payments/${paymentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (res.ok) {
+      const projectRes = await fetch(`/api/projects/${id}`);
+      if (projectRes.ok) {
+        setProject(await projectRes.json());
+      }
     }
   }
 
@@ -307,37 +398,164 @@ export default function ProjectPage({
           <div className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-medium text-foreground">Оплаты</h3>
-              <button className="text-sm text-primary hover:text-primary/80">+ Добавить</button>
+              <button
+                onClick={() => setShowPaymentForm(true)}
+                className="text-sm text-primary hover:text-primary/80"
+              >
+                + Добавить
+              </button>
             </div>
-            {project.payments.length === 0 ? (
+
+            {/* Payment form */}
+            {showPaymentForm && (
+              <form onSubmit={handleAddPayment} className="mb-4 p-3 bg-muted/50 rounded-lg space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Сумма *</label>
+                    <input
+                      type="number"
+                      value={paymentForm.amount}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                      className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Дата *</label>
+                    <input
+                      type="date"
+                      value={paymentForm.date}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
+                      className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Тип</label>
+                    <select
+                      value={paymentForm.type}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, type: e.target.value as "ADVANCE" | "MILESTONE" | "FINAL" })}
+                      className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="ADVANCE">Аванс</option>
+                      <option value="MILESTONE">Этап</option>
+                      <option value="FINAL">Финал</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Статус</label>
+                    <select
+                      value={paymentForm.status}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, status: e.target.value as "PENDING" | "RECEIVED" | "CANCELLED" })}
+                      className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="PENDING">Ожидается</option>
+                      <option value="RECEIVED">Получена</option>
+                      <option value="CANCELLED">Отменена</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">№ документа</label>
+                  <input
+                    type="text"
+                    value={paymentForm.documentNumber}
+                    onChange={(e) => setPaymentForm({ ...paymentForm, documentNumber: e.target.value })}
+                    className="w-full px-2 py-1.5 text-sm bg-background border border-border rounded focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Номер счета/платежки"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={paymentSaving}
+                    className="flex-1 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {paymentSaving ? "..." : "Добавить"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPaymentForm(false)}
+                    className="px-3 py-1.5 text-sm bg-muted text-foreground rounded hover:bg-muted/80"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {project.payments.length === 0 && !showPaymentForm ? (
               <p className="text-muted-foreground text-sm">Нет оплат</p>
             ) : (
               <div className="space-y-2">
                 {project.payments.map((payment) => (
-                  <div key={payment.id} className="flex items-center justify-between text-sm">
-                    <div>
-                      <div className="text-foreground">{formatMoney(payment.amount)}</div>
-                      <div className="text-muted-foreground">
+                  <div key={payment.id} className="flex items-center justify-between text-sm p-2 rounded hover:bg-muted/30 group">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-foreground font-medium">{formatMoney(payment.amount)}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {paymentTypeLabels[payment.type]}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
                         {new Date(payment.date).toLocaleDateString("ru-RU")}
+                        {payment.documentNumber && ` • ${payment.documentNumber}`}
                       </div>
                     </div>
-                    <span
-                      className={`px-2 py-1 rounded text-xs ${
-                        payment.status === "RECEIVED"
-                          ? "bg-green-500/10 text-green-500"
-                          : payment.status === "PENDING"
-                            ? "bg-yellow-500/10 text-yellow-500"
-                            : "bg-gray-500/10 text-gray-500"
-                      }`}
-                    >
-                      {payment.status === "RECEIVED"
-                        ? "Получена"
-                        : payment.status === "PENDING"
-                          ? "Ожидается"
-                          : "Отменена"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={payment.status}
+                        onChange={(e) => handleUpdatePaymentStatus(payment.id, e.target.value as "PENDING" | "RECEIVED" | "CANCELLED")}
+                        className={`px-2 py-0.5 rounded text-xs border-0 cursor-pointer ${
+                          payment.status === "RECEIVED"
+                            ? "bg-green-500/10 text-green-500"
+                            : payment.status === "PENDING"
+                              ? "bg-yellow-500/10 text-yellow-500"
+                              : "bg-gray-500/10 text-gray-500"
+                        }`}
+                      >
+                        <option value="PENDING">Ожидается</option>
+                        <option value="RECEIVED">Получена</option>
+                        <option value="CANCELLED">Отменена</option>
+                      </select>
+                      <button
+                        onClick={() => handleDeletePayment(payment.id)}
+                        className="opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive/80 transition-opacity"
+                        title="Удалить"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Budget summary */}
+            {budgetNum > 0 && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="text-muted-foreground">Оплачено / Бюджет</span>
+                  <span className="text-foreground">
+                    {formatMoney(project.totalPaid)} / {formatMoney(project.budget)}
+                  </span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all ${paidPercent >= 100 ? "bg-green-500" : "bg-primary"}`}
+                    style={{ width: `${Math.min(paidPercent, 100)}%` }}
+                  />
+                </div>
+                {budgetNum > project.totalPaid && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Остаток: {formatMoney(budgetNum - project.totalPaid)}
+                  </div>
+                )}
               </div>
             )}
           </div>
