@@ -6,7 +6,9 @@ import { Sidebar } from "./Sidebar";
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 500;
 const DEFAULT_WIDTH = 256;
+const COLLAPSED_WIDTH = 0;
 const STORAGE_KEY = "sidebar-width";
+const COLLAPSED_KEY = "sidebar-collapsed";
 
 function getStoredWidth(): number {
   if (typeof window === "undefined") return DEFAULT_WIDTH;
@@ -18,6 +20,11 @@ function getStoredWidth(): number {
     }
   }
   return DEFAULT_WIDTH;
+}
+
+function getStoredCollapsed(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(COLLAPSED_KEY) === "true";
 }
 
 function subscribe(callback: () => void) {
@@ -33,9 +40,19 @@ function useStoredWidth() {
   );
 }
 
+function useStoredCollapsed() {
+  return useSyncExternalStore(
+    subscribe,
+    getStoredCollapsed,
+    () => false
+  );
+}
+
 export function ResizableSidebar() {
   const storedWidth = useStoredWidth();
+  const storedCollapsed = useStoredCollapsed();
   const [width, setWidth] = useState(storedWidth);
+  const [isCollapsed, setIsCollapsed] = useState(storedCollapsed);
   const [isResizing, setIsResizing] = useState(false);
 
   // Sync with stored width on mount
@@ -43,12 +60,26 @@ export function ResizableSidebar() {
     setWidth(storedWidth);
   }, [storedWidth]);
 
+  // Sync with stored collapsed state on mount
+  useEffect(() => {
+    setIsCollapsed(storedCollapsed);
+  }, [storedCollapsed]);
+
   // Save width to localStorage when resizing ends
   useEffect(() => {
     if (!isResizing && width !== DEFAULT_WIDTH) {
       localStorage.setItem(STORAGE_KEY, width.toString());
     }
   }, [isResizing, width]);
+
+  // Save collapsed state to localStorage
+  useEffect(() => {
+    localStorage.setItem(COLLAPSED_KEY, isCollapsed.toString());
+  }, [isCollapsed]);
+
+  const toggleCollapsed = useCallback(() => {
+    setIsCollapsed(prev => !prev);
+  }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -87,19 +118,66 @@ export function ResizableSidebar() {
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
+  // Keyboard shortcut: Cmd/Ctrl + B to toggle sidebar
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "b") {
+        e.preventDefault();
+        toggleCollapsed();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [toggleCollapsed]);
+
+  const currentWidth = isCollapsed ? COLLAPSED_WIDTH : width;
+
   return (
-    <div className="relative flex" style={{ width }}>
-      <div className="flex-1 overflow-hidden">
+    <div
+      className="relative flex transition-all duration-300 ease-in-out"
+      style={{ width: currentWidth }}
+      data-testid="resizable-sidebar"
+    >
+      {/* Collapsed toggle button */}
+      {isCollapsed && (
+        <button
+          onClick={toggleCollapsed}
+          className="absolute left-2 top-3 z-20 p-2 rounded-md bg-card border border-border hover:bg-muted transition-colors"
+          title="Развернуть сайдбар (Ctrl+B)"
+          data-testid="sidebar-expand-btn"
+        >
+          <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      )}
+
+      {/* Sidebar content */}
+      <div className={`flex-1 overflow-hidden transition-opacity duration-300 ${isCollapsed ? "opacity-0 invisible" : "opacity-100 visible"}`}>
         <Sidebar />
+        {/* Collapse button inside sidebar */}
+        <button
+          onClick={toggleCollapsed}
+          className="absolute top-3 right-3 z-20 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+          title="Скрыть сайдбар (Ctrl+B)"
+          data-testid="sidebar-collapse-btn"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+        </button>
       </div>
-      {/* Resizer handle */}
-      <div
-        onMouseDown={handleMouseDown}
-        className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
-          isResizing ? "bg-primary" : "bg-transparent"
-        }`}
-        title="Потяните для изменения ширины"
-      />
+
+      {/* Resizer handle - only when not collapsed */}
+      {!isCollapsed && (
+        <div
+          onMouseDown={handleMouseDown}
+          className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
+            isResizing ? "bg-primary" : "bg-transparent"
+          }`}
+          title="Потяните для изменения ширины"
+        />
+      )}
     </div>
   );
 }
