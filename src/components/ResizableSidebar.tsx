@@ -6,7 +6,6 @@ import { Sidebar } from "./Sidebar";
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 500;
 const DEFAULT_WIDTH = 256;
-const COLLAPSED_WIDTH = 0;
 const STORAGE_KEY = "sidebar-width";
 const COLLAPSED_KEY = "sidebar-collapsed";
 
@@ -130,56 +129,36 @@ export function ResizableSidebar() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [toggleCollapsed]);
 
-  const currentWidth = isCollapsed ? COLLAPSED_WIDTH : width;
-
   return (
-    <>
-      {/* Collapsed toggle button - positioned outside the collapsing container */}
-      <button
-        onClick={toggleCollapsed}
-        className={`fixed left-2 top-3 z-30 p-2 rounded-md bg-card border border-border hover:bg-muted transition-all duration-200 ${
-          isCollapsed ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
-        }`}
-        title="Развернуть сайдбар (Ctrl+B)"
-        data-testid="sidebar-expand-btn"
-      >
-        <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-
+    <div
+      className="relative flex-shrink-0"
+      style={{ width: isCollapsed ? 0 : width }}
+      data-testid="resizable-sidebar"
+    >
+      {/* Sidebar wrapper with transform animation */}
       <div
-        className="relative flex"
+        className="absolute top-0 left-0 h-full"
         style={{
-          width: currentWidth,
-          transition: "width 200ms ease-out"
+          width: width,
+          transform: isCollapsed ? `translateX(-${width}px)` : "translateX(0)",
+          transition: "transform 200ms ease-out",
         }}
-        data-testid="resizable-sidebar"
       >
-        {/* Sidebar content */}
-        <div
-          className="flex-1 overflow-hidden"
-          style={{
-            opacity: isCollapsed ? 0 : 1,
-            visibility: isCollapsed ? "hidden" : "visible",
-            transition: "opacity 150ms ease-out, visibility 150ms ease-out"
-          }}
-        >
-          <Sidebar />
-          {/* Collapse button inside sidebar */}
-          <button
-            onClick={toggleCollapsed}
-            className="absolute top-3 right-3 z-20 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            title="Скрыть сайдбар (Ctrl+B)"
-            data-testid="sidebar-collapse-btn"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-          </button>
-        </div>
+        <Sidebar />
 
-        {/* Resizer handle - only when not collapsed */}
+        {/* Collapse button inside sidebar */}
+        <button
+          onClick={toggleCollapsed}
+          className="absolute top-3 right-3 z-20 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+          title="Скрыть сайдбар (Ctrl+B)"
+          data-testid="sidebar-collapse-btn"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+        </button>
+
+        {/* Resizer handle */}
         {!isCollapsed && (
           <div
             onMouseDown={handleMouseDown}
@@ -190,6 +169,20 @@ export function ResizableSidebar() {
           />
         )}
       </div>
-    </>
+
+      {/* Expand button - shows when collapsed */}
+      <button
+        onClick={toggleCollapsed}
+        className={`absolute left-2 top-3 z-30 p-2 rounded-md bg-card border border-border hover:bg-muted transition-opacity duration-200 ${
+          isCollapsed ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        title="Развернуть сайдбар (Ctrl+B)"
+        data-testid="sidebar-expand-btn"
+      >
+        <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    </div>
   );
 }
