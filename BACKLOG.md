@@ -122,27 +122,27 @@
 
 ---
 
-## Фаза 5: Таймлоги
+## Фаза 5: Таймлоги ✅
 
 ### API
-- [ ] `GET /api/time-entries` — список записей с фильтрами (projectId, taskId, userId, date range)
-- [ ] `POST /api/time-entries` — создать запись
-- [ ] `GET /api/time-entries/[id]` — детали записи
-- [ ] `PATCH /api/time-entries/[id]` — обновить запись
-- [ ] `DELETE /api/time-entries/[id]` — удалить запись
-- [ ] `GET /api/time-entries/report` — отчёт (группировка по проекту/пользователю/типу работы)
+- [x] `GET /api/time-entries` — список записей с фильтрами (projectId, taskId, userId, date range, my)
+- [x] `POST /api/time-entries` — создать запись
+- [x] `GET /api/time-entries/[id]` — детали записи
+- [x] `PATCH /api/time-entries/[id]` — обновить запись
+- [x] `DELETE /api/time-entries/[id]` — удалить запись
+- [x] `GET /api/time-entries/report` — отчёт (группировка по проекту/пользователю/типу работы/дате)
 
 ### UI
-- [ ] Страница `/crm/time/page.tsx` — журнал времени (свои записи)
-- [ ] Страница `/crm/time/report/page.tsx` — отчёт по времени (ADMIN/MANAGER)
-- [ ] Фильтры: период, проект, сотрудник, тип работы, billable
+- [x] Страница `/crm/time/page.tsx` — журнал времени с быстрым добавлением
+- [x] Страница `/crm/time/report/page.tsx` — отчёт по времени с фильтрами и итогами
+- [x] Фильтры: период, группировка (проект/сотрудник/тип работы/день)
 
-### Компоненты
-- [ ] `TimeEntryForm.tsx` — форма записи времени (проект, задача, дата, duration, тип)
-- [ ] `TimeEntriesList.tsx` — журнал времени (таблица с группировкой по дням)
-- [ ] `TimeReport.tsx` — отчёт (таблица + итоги для выставления счетов)
-- [ ] `DurationInput.tsx` — ввод времени (часы:минуты или десятичные)
-- [ ] `WorkTypeBadge.tsx` — бейдж типа работы
+### Компоненты (встроены в страницы)
+- [ ] `TimeEntryForm.tsx` — форма записи времени (отложено)
+- [ ] `TimeEntriesList.tsx` — журнал времени (отложено)
+- [ ] `TimeReport.tsx` — отчёт (отложено)
+- [ ] `DurationInput.tsx` — ввод времени (отложено)
+- [ ] `WorkTypeBadge.tsx` — бейдж типа работы (отложено)
 
 ---
 
