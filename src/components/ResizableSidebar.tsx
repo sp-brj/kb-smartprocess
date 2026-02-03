@@ -92,45 +92,54 @@ export function ResizableSidebar() {
   }, []);
 
   return (
-    <div
-      className="relative flex-shrink-0 h-screen"
-      style={{
-        width: width,
-        marginLeft: isCollapsed ? -width : 0,
-      }}
-      data-testid="resizable-sidebar"
-    >
-      <Sidebar />
-
-      {/* Toggle button */}
-      <button
-        onClick={toggleCollapsed}
-        className="absolute top-3 z-20 p-1.5 rounded-md bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+    <>
+      {/* Sidebar wrapper with transform animation (like ChatGPT) */}
+      <div
+        className="relative flex-shrink-0 h-screen transition-transform duration-200 ease-out"
         style={{
-          right: isCollapsed ? -40 : 12,
+          width: width,
+          transform: isCollapsed ? `translateX(-${width}px)` : "translateX(0)",
         }}
-        title={isCollapsed ? "Развернуть сайдбар (Ctrl+B)" : "Скрыть сайдбар (Ctrl+B)"}
-        data-testid={isCollapsed ? "sidebar-expand-btn" : "sidebar-collapse-btn"}
+        data-testid="resizable-sidebar"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {isCollapsed ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          )}
-        </svg>
-      </button>
+        <Sidebar />
 
-      {/* Resizer handle */}
-      {!isCollapsed && (
-        <div
-          onMouseDown={handleMouseDown}
-          className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 z-10 ${
-            isResizing ? "bg-primary" : "bg-transparent"
-          }`}
-          title="Потяните для изменения ширины"
-        />
-      )}
-    </div>
+        {/* Toggle button - moves with sidebar */}
+        <button
+          onClick={toggleCollapsed}
+          className="absolute top-3 -right-10 z-20 p-1.5 rounded-md bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          title={isCollapsed ? "Развернуть сайдбар (Ctrl+B)" : "Скрыть сайдбар (Ctrl+B)"}
+          data-testid={isCollapsed ? "sidebar-expand-btn" : "sidebar-collapse-btn"}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {isCollapsed ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            )}
+          </svg>
+        </button>
+
+        {/* Resizer handle */}
+        {!isCollapsed && (
+          <div
+            onMouseDown={handleMouseDown}
+            className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 z-10 ${
+              isResizing ? "bg-primary" : "bg-transparent"
+            }`}
+            title="Потяните для изменения ширины"
+          />
+        )}
+      </div>
+
+      {/* Spacer that collapses - this is what makes content shift smoothly */}
+      <div
+        className="flex-shrink-0 transition-all duration-200 ease-out"
+        style={{
+          width: isCollapsed ? 0 : 0,
+          marginLeft: isCollapsed ? -width : 0,
+        }}
+      />
+    </>
   );
 }
