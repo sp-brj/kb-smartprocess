@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -13,11 +13,15 @@ import type { ComponentProps } from "react";
 interface Props {
   content: string;
   articleId?: string;
-  onContentChange?: (newContent: string) => void;
 }
 
 export function ArticleContent({ content: initialContent, articleId }: Props) {
   const [content, setContent] = useState(initialContent);
+
+  // Синхронизация state с props при изменении initialContent
+  useEffect(() => {
+    setContent(initialContent);
+  }, [initialContent]);
   const checkboxIndexRef = useRef(0);
 
   // Функция для переключения чекбокса

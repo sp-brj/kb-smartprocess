@@ -24,7 +24,6 @@ export function ArticlesList({ initialArticles }: ArticlesListProps) {
   const router = useRouter();
 
   function handleDragStart(e: React.DragEvent<HTMLDivElement>, article: Article) {
-    console.log("Drag start:", article.title);
     setDraggedArticleId(article.id);
 
     // Set drag data including previous folder for optimistic updates
@@ -44,7 +43,6 @@ export function ArticlesList({ initialArticles }: ArticlesListProps) {
   }
 
   function handleDragEnd() {
-    console.log("Drag end");
     setDraggedArticleId(null);
   }
 
