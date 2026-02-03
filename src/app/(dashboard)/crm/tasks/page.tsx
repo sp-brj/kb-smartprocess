@@ -29,6 +29,13 @@ const statusColors: Record<string, string> = {
   DONE: "bg-green-500/10 text-green-500",
 };
 
+const statusBorderColors: Record<string, string> = {
+  TODO: "border-t-gray-500",
+  IN_PROGRESS: "border-t-blue-500",
+  REVIEW: "border-t-yellow-500",
+  DONE: "border-t-green-500",
+};
+
 const priorityColors: Record<string, string> = {
   LOW: "text-gray-500",
   MEDIUM: "text-blue-500",
@@ -36,10 +43,19 @@ const priorityColors: Record<string, string> = {
   URGENT: "text-red-500",
 };
 
+const columns: ("TODO" | "IN_PROGRESS" | "REVIEW" | "DONE")[] = [
+  "TODO",
+  "IN_PROGRESS",
+  "REVIEW",
+  "DONE",
+];
+
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "active" | "done">("active");
+  const [view, setView] = useState<"list" | "kanban">("kanban");
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchTasks() {
@@ -67,12 +83,87 @@ export default function TasksPage() {
     DONE: filteredTasks.filter((t) => t.status === "DONE"),
   };
 
+  function handleDragStart(taskId: string) {
+    setDraggedTaskId(taskId);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
+  async function handleDrop(e: React.DragEvent, newStatus: string) {
+    e.preventDefault();
+    if (!draggedTaskId) return;
+
+    const task = tasks.find((t) => t.id === draggedTaskId);
+    if (!task || task.status === newStatus) {
+      setDraggedTaskId(null);
+      return;
+    }
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === draggedTaskId ? { ...t, status: newStatus as Task["status"] } : t
+      )
+    );
+
+    // Update on server
+    const res = await fetch(`/api/tasks/${draggedTaskId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+
+    if (!res.ok) {
+      // Revert on error
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === draggedTaskId ? { ...t, status: task.status } : t
+        )
+      );
+    }
+
+    setDraggedTaskId(null);
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-foreground">Мои задачи</h2>
         <div className="flex items-center gap-3">
+          {/* View switcher */}
+          <div className="flex bg-muted rounded-lg p-1">
+            <button
+              onClick={() => setView("list")}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 ${
+                view === "list"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid="tasks-view-list"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+              Список
+            </button>
+            <button
+              onClick={() => setView("kanban")}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5 ${
+                view === "kanban"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid="tasks-view-kanban"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+              Канбан
+            </button>
+          </div>
           {/* Filter */}
           <div className="flex bg-muted rounded-lg p-1">
             <button
@@ -128,24 +219,45 @@ export default function TasksPage() {
         <div className="bg-card border border-border rounded-lg p-8 text-center text-muted-foreground">
           {filter === "active" ? "Нет активных задач" : filter === "done" ? "Нет выполненных задач" : "Нет задач"}
         </div>
+      ) : view === "kanban" ? (
+        /* Kanban View */
+        <div className="grid grid-cols-4 gap-4 min-h-[500px]" data-testid="tasks-kanban-board">
+          {columns.map((status) => {
+            const columnTasks = groupedByStatus[status];
+            return (
+              <div
+                key={status}
+                className={`bg-muted/30 rounded-lg border-t-4 ${statusBorderColors[status]}`}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, status)}
+                data-testid={`tasks-kanban-column-${status}`}
+              >
+                <div className="px-4 py-3 border-b border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-foreground">{statusLabels[status]}</span>
+                    <span className="text-sm text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                      {columnTasks.length}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-3 space-y-2">
+                  {columnTasks.map((task) => (
+                    <KanbanTaskCard
+                      key={task.id}
+                      task={task}
+                      onDragStart={handleDragStart}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {(["TODO", "IN_PROGRESS", "REVIEW", "DONE"] as const).map((status) => (
-            <div key={status} className="space-y-3">
-              <div className="flex items-center gap-2 px-2">
-                <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[status]}`}>
-                  {statusLabels[status]}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {groupedByStatus[status].length}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {groupedByStatus[status].map((task) => (
-                  <TaskCard key={task.id} task={task} />
-                ))}
-              </div>
-            </div>
+        /* List View */
+        <div className="bg-card border border-border rounded-lg divide-y divide-border" data-testid="tasks-list-view">
+          {filteredTasks.map((task) => (
+            <ListTaskCard key={task.id} task={task} />
           ))}
         </div>
       )}
@@ -153,18 +265,31 @@ export default function TasksPage() {
   );
 }
 
-function TaskCard({ task }: { task: Task }) {
+function KanbanTaskCard({
+  task,
+  onDragStart,
+}: {
+  task: Task;
+  onDragStart: (id: string) => void;
+}) {
   const isOverdue = task.deadline && new Date(task.deadline) < new Date() && task.status !== "DONE";
 
   return (
-    <Link
-      href={`/crm/projects/${task.project.id}/kanban`}
-      className="block p-3 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors"
+    <div
+      draggable
+      onDragStart={() => onDragStart(task.id)}
+      className="p-3 bg-card border border-border rounded-lg cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors"
+      data-testid={`tasks-kanban-task-${task.id}`}
     >
       <div className="flex items-start gap-2 mb-2">
-        <span className={`text-sm ${priorityColors[task.priority]}`}>●</span>
+        <span className={`text-sm mt-0.5 ${priorityColors[task.priority]}`}>●</span>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-foreground truncate">{task.title}</div>
+          <Link
+            href={`/crm/projects/${task.project.id}/kanban`}
+            className="font-medium text-foreground hover:text-primary block truncate"
+          >
+            {task.title}
+          </Link>
           <div className="text-xs text-muted-foreground truncate">{task.project.name}</div>
         </div>
       </div>
@@ -182,6 +307,39 @@ function TaskCard({ task }: { task: Task }) {
             {new Date(task.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
           </span>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ListTaskCard({ task }: { task: Task }) {
+  const isOverdue = task.deadline && new Date(task.deadline) < new Date() && task.status !== "DONE";
+
+  return (
+    <Link
+      href={`/crm/projects/${task.project.id}/kanban`}
+      className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors"
+      data-testid={`tasks-list-task-${task.id}`}
+    >
+      <span className={`text-sm ${priorityColors[task.priority]}`}>●</span>
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-foreground">{task.title}</div>
+        <div className="text-sm text-muted-foreground">{task.project.name}</div>
+      </div>
+      <div className="flex items-center gap-4 text-sm">
+        {task.checklistTotal > 0 && (
+          <span className="text-muted-foreground">
+            ✓ {task.checklistCompleted}/{task.checklistTotal}
+          </span>
+        )}
+        {task.deadline && (
+          <span className={isOverdue ? "text-red-500" : "text-muted-foreground"}>
+            {new Date(task.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
+          </span>
+        )}
+        <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[task.status]}`}>
+          {statusLabels[task.status]}
+        </span>
       </div>
     </Link>
   );
