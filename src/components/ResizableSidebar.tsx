@@ -129,53 +129,12 @@ export function ResizableSidebar() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [toggleCollapsed]);
 
-  return (
-    <div
-      className="relative flex-shrink-0"
-      style={{ width: isCollapsed ? 0 : width }}
-      data-testid="resizable-sidebar"
-    >
-      {/* Sidebar wrapper with transform animation */}
-      <div
-        className="absolute top-0 left-0 h-full"
-        style={{
-          width: width,
-          transform: isCollapsed ? `translateX(-${width}px)` : "translateX(0)",
-          transition: "transform 200ms ease-out",
-        }}
-      >
-        <Sidebar />
-
-        {/* Collapse button inside sidebar */}
-        <button
-          onClick={toggleCollapsed}
-          className="absolute top-3 right-3 z-20 p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-          title="Скрыть сайдбар (Ctrl+B)"
-          data-testid="sidebar-collapse-btn"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-        </button>
-
-        {/* Resizer handle */}
-        {!isCollapsed && (
-          <div
-            onMouseDown={handleMouseDown}
-            className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 transition-colors z-10 ${
-              isResizing ? "bg-primary" : "bg-transparent"
-            }`}
-            title="Потяните для изменения ширины"
-          />
-        )}
-      </div>
-
-      {/* Expand button - shows when collapsed */}
+  // No animations - instant toggle to avoid visual glitches
+  if (isCollapsed) {
+    return (
       <button
         onClick={toggleCollapsed}
-        className={`absolute left-2 top-3 z-30 p-2 rounded-md bg-card border border-border hover:bg-muted transition-opacity duration-200 ${
-          isCollapsed ? "opacity-100" : "opacity-0 pointer-events-none"
-        }`}
+        className="flex-shrink-0 m-2 p-2 rounded-md bg-card border border-border hover:bg-muted"
         title="Развернуть сайдбар (Ctrl+B)"
         data-testid="sidebar-expand-btn"
       >
@@ -183,6 +142,37 @@ export function ResizableSidebar() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
         </svg>
       </button>
+    );
+  }
+
+  return (
+    <div
+      className="relative flex-shrink-0"
+      style={{ width }}
+      data-testid="resizable-sidebar"
+    >
+      <Sidebar />
+
+      {/* Collapse button */}
+      <button
+        onClick={toggleCollapsed}
+        className="absolute top-3 right-3 z-20 p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
+        title="Скрыть сайдбар (Ctrl+B)"
+        data-testid="sidebar-collapse-btn"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+        </svg>
+      </button>
+
+      {/* Resizer handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 z-10 ${
+          isResizing ? "bg-primary" : "bg-transparent"
+        }`}
+        title="Потяните для изменения ширины"
+      />
     </div>
   );
 }
