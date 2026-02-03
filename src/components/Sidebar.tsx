@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
-import { TagCloud } from "./TagCloud";
 import { RecentArticles } from "./RecentArticles";
 import { StatsWidget } from "./analytics/StatsWidget";
 
@@ -287,7 +286,6 @@ export function Sidebar() {
       </div>
       <RecentArticles />
       <StatsWidget />
-      <TagCloud />
       <div className="p-4 border-t border-border">
         <ThemeToggle />
       </div>
