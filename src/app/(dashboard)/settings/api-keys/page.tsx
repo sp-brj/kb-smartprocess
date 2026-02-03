@@ -6,11 +6,13 @@ export const metadata = {
 
 export default function ApiKeysPage() {
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">API Ключи</h1>
-      <p className="text-muted-foreground mb-6">
-        API ключи позволяют внешним приложениям (боты, скрипты) получать доступ к базе знаний.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">API Ключи</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          API ключи позволяют внешним приложениям (боты, скрипты) получать доступ к базе знаний
+        </p>
+      </div>
       <ApiKeysManager />
     </div>
   );
