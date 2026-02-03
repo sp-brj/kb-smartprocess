@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 
 const MIN_WIDTH = 200;
@@ -9,40 +9,36 @@ const DEFAULT_WIDTH = 256;
 const STORAGE_KEY = "sidebar-width";
 const COLLAPSED_KEY = "sidebar-collapsed";
 
+// Lazy initializers for useState - called only once
+function getInitialWidth(): number {
+  if (typeof window === "undefined") return DEFAULT_WIDTH;
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    const parsed = parseInt(saved, 10);
+    if (parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
+      return parsed;
+    }
+  }
+  return DEFAULT_WIDTH;
+}
+
+function getInitialCollapsed(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(COLLAPSED_KEY) === "true";
+}
+
 export function ResizableSidebar() {
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [width, setWidth] = useState(getInitialWidth);
+  const [isCollapsed, setIsCollapsed] = useState(getInitialCollapsed);
   const [isResizing, setIsResizing] = useState(false);
-  const initialized = useRef(false);
-
-  // Initialize from localStorage once on mount
-  useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-
-    const savedWidth = localStorage.getItem(STORAGE_KEY);
-    if (savedWidth) {
-      const parsed = parseInt(savedWidth, 10);
-      if (parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
-        setWidth(parsed);
-      }
-    }
-
-    const savedCollapsed = localStorage.getItem(COLLAPSED_KEY);
-    if (savedCollapsed === "true") {
-      setIsCollapsed(true);
-    }
-  }, []);
 
   // Save collapsed state
   useEffect(() => {
-    if (!initialized.current) return;
     localStorage.setItem(COLLAPSED_KEY, isCollapsed.toString());
   }, [isCollapsed]);
 
   // Save width when resizing ends
   useEffect(() => {
-    if (!initialized.current) return;
     if (!isResizing) {
       localStorage.setItem(STORAGE_KEY, width.toString());
     }
@@ -57,7 +53,7 @@ export function ResizableSidebar() {
     setIsResizing(true);
   }, []);
 
-  // Resizing handlers with stable refs to avoid re-adding listeners
+  // Resizing handlers
   useEffect(() => {
     if (!isResizing) return;
 
