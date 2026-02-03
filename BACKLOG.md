@@ -61,25 +61,25 @@
 
 ---
 
-## Фаза 3: Проекты
+## Фаза 3: Проекты ✅
 
 ### API
-- [ ] `GET /api/projects` — список проектов с фильтрами (clientId, statusId, managerId, type)
-- [ ] `POST /api/projects` — создать проект
-- [ ] `GET /api/projects/[id]` — детали проекта
-- [ ] `PATCH /api/projects/[id]` — обновить проект
-- [ ] `DELETE /api/projects/[id]` — удалить проект
-- [ ] `PATCH /api/projects/[id]/status` — изменить статус (для drag-drop воронки)
-- [ ] `GET /api/projects/[id]/summary` — сводка (часы, бюджет, прогресс задач)
+- [x] `GET /api/projects` — список проектов с фильтрами (clientId, statusId, managerId, type, search)
+- [x] `POST /api/projects` — создать проект
+- [x] `GET /api/projects/[id]` — детали проекта (со статистикой: totalMinutes, totalPaid)
+- [x] `PATCH /api/projects/[id]` — обновить проект
+- [x] `DELETE /api/projects/[id]` — удалить проект
+- [x] `PATCH /api/projects/[id]/status` — изменить статус (для drag-drop воронки)
+- [ ] `GET /api/projects/[id]/summary` — сводка (отложено, статистика встроена в GET)
 
 ### UI
-- [ ] Страница `/crm/projects/page.tsx` — список проектов
-- [ ] Переключатель вид: таблица / воронка
-- [ ] Страница `/crm/projects/new/page.tsx` — создание проекта
-- [ ] Страница `/crm/projects/[id]/page.tsx` — детали проекта
-- [ ] Страница `/crm/projects/[id]/edit/page.tsx` — редактирование проекта
+- [x] Страница `/crm/projects/page.tsx` — список проектов
+- [x] Переключатель вид: таблица / воронка (pipeline view)
+- [x] Страница `/crm/projects/new/page.tsx` — создание проекта
+- [x] Страница `/crm/projects/[id]/page.tsx` — детали проекта (задачи, оплаты, статистика)
+- [x] Страница `/crm/projects/[id]/edit/page.tsx` — редактирование проекта
 
-### Компоненты
+### Компоненты (отложено — формы встроены в страницы)
 - [ ] `ProjectForm.tsx` — форма проекта (клиент, статус, тип, даты, бюджет)
 - [ ] `ProjectsList.tsx` — таблица проектов
 - [ ] `ProjectCard.tsx` — карточка проекта (для воронки)

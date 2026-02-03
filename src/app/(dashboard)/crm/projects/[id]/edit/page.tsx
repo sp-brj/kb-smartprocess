@@ -1,0 +1,349 @@
+"use client";
+
+import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+type Client = { id: string; name: string };
+type ProjectStatus = { id: string; name: string; color: string };
+type User = { id: string; name: string | null; email: string };
+
+type Project = {
+  id: string;
+  name: string;
+  description: string | null;
+  type: string;
+  plannedStart: string | null;
+  plannedEnd: string | null;
+  actualStart: string | null;
+  actualEnd: string | null;
+  budget: string | null;
+  clientId: string;
+  statusId: string;
+  managerId: string;
+};
+
+export default function EditProjectPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const [clients, setClients] = useState<Client[]>([]);
+  const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    clientId: "",
+    statusId: "",
+    type: "IMPLEMENTATION",
+    plannedStart: "",
+    plannedEnd: "",
+    actualStart: "",
+    actualEnd: "",
+    budget: "",
+    managerId: "",
+  });
+
+  useEffect(() => {
+    async function fetchData() {
+      const [projectRes, clientsRes, statusesRes, usersRes] = await Promise.all([
+        fetch(`/api/projects/${id}`),
+        fetch("/api/clients?status=ACTIVE"),
+        fetch("/api/project-statuses"),
+        fetch("/api/admin/users"),
+      ]);
+
+      if (!projectRes.ok) {
+        setError("Проект не найден");
+        setLoading(false);
+        return;
+      }
+
+      const project: Project = await projectRes.json();
+      setFormData({
+        name: project.name,
+        description: project.description || "",
+        clientId: project.clientId,
+        statusId: project.statusId,
+        type: project.type,
+        plannedStart: project.plannedStart?.split("T")[0] || "",
+        plannedEnd: project.plannedEnd?.split("T")[0] || "",
+        actualStart: project.actualStart?.split("T")[0] || "",
+        actualEnd: project.actualEnd?.split("T")[0] || "",
+        budget: project.budget || "",
+        managerId: project.managerId,
+      });
+
+      if (clientsRes.ok) setClients(await clientsRes.json());
+      if (statusesRes.ok) setStatuses(await statusesRes.json());
+      if (usersRes.ok) setUsers(await usersRes.json());
+
+      setLoading(false);
+    }
+    fetchData();
+  }, [id]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setSaving(true);
+
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          budget: formData.budget ? parseFloat(formData.budget) : null,
+          plannedStart: formData.plannedStart || null,
+          plannedEnd: formData.plannedEnd || null,
+          actualStart: formData.actualStart || null,
+          actualEnd: formData.actualEnd || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Ошибка обновления");
+      }
+
+      router.push(`/crm/projects/${id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка");
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return <div className="p-8 text-center text-muted-foreground">Загрузка...</div>;
+  }
+
+  if (error && !formData.name) {
+    return <div className="p-8 text-center text-destructive">{error}</div>;
+  }
+
+  return (
+    <div className="max-w-2xl">
+      <div className="mb-6">
+        <Link
+          href={`/crm/projects/${id}`}
+          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Назад к проекту
+        </Link>
+        <h2 className="text-xl font-semibold text-foreground mt-2">
+          Редактирование проекта
+        </h2>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+          <h3 className="font-medium text-foreground">Основная информация</h3>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Название проекта <span className="text-destructive">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+              required
+              data-testid="project-name-input"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Клиент <span className="text-destructive">*</span>
+            </label>
+            <select
+              value={formData.clientId}
+              onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+              required
+              data-testid="project-client-select"
+            >
+              <option value="">Выберите клиента</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Тип проекта <span className="text-destructive">*</span>
+              </label>
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                data-testid="project-type-select"
+              >
+                <option value="IMPLEMENTATION">Внедрение</option>
+                <option value="CONSULTING">Консалтинг</option>
+                <option value="DEVELOPMENT">Доработка</option>
+                <option value="SUPPORT">Сопровождение</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Статус
+              </label>
+              <select
+                value={formData.statusId}
+                onChange={(e) => setFormData({ ...formData, statusId: e.target.value })}
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                {statuses.map((status) => (
+                  <option key={status.id} value={status.id}>
+                    {status.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Менеджер проекта
+            </label>
+            <select
+              value={formData.managerId}
+              onChange={(e) => setFormData({ ...formData, managerId: e.target.value })}
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name || user.email}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Описание
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={3}
+              placeholder="Описание проекта (поддерживается Markdown)"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+          <h3 className="font-medium text-foreground">Сроки и бюджет</h3>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Плановое начало
+              </label>
+              <input
+                type="date"
+                value={formData.plannedStart}
+                onChange={(e) => setFormData({ ...formData, plannedStart: e.target.value })}
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Плановое окончание
+              </label>
+              <input
+                type="date"
+                value={formData.plannedEnd}
+                onChange={(e) => setFormData({ ...formData, plannedEnd: e.target.value })}
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Фактическое начало
+              </label>
+              <input
+                type="date"
+                value={formData.actualStart}
+                onChange={(e) => setFormData({ ...formData, actualStart: e.target.value })}
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Фактическое окончание
+              </label>
+              <input
+                type="date"
+                value={formData.actualEnd}
+                onChange={(e) => setFormData({ ...formData, actualEnd: e.target.value })}
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Бюджет (руб.)
+            </label>
+            <input
+              type="number"
+              value={formData.budget}
+              onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+              placeholder="0"
+              className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={saving || !formData.name.trim() || !formData.clientId}
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            data-testid="save-project-button"
+          >
+            {saving ? "Сохранение..." : "Сохранить"}
+          </button>
+          <Link
+            href={`/crm/projects/${id}`}
+            className="px-6 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
+          >
+            Отмена
+          </Link>
+        </div>
+      </form>
+    </div>
+  );
+}

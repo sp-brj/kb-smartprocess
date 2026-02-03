@@ -17,8 +17,6 @@ export default async function CrmDashboardPage() {
     orderBy: { order: "asc" },
   });
 
-  const statusMap = new Map(statuses.map((s) => [s.id, s]));
-
   return (
     <div className="space-y-6">
       {/* Stats cards */}
