@@ -84,6 +84,7 @@ export default function TimeReportPage() {
               value={filters.from}
               onChange={(e) => setFilters({ ...filters, from: e.target.value })}
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+              data-testid="report-date-from"
             />
           </div>
           <div>
@@ -93,6 +94,7 @@ export default function TimeReportPage() {
               value={filters.to}
               onChange={(e) => setFilters({ ...filters, to: e.target.value })}
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+              data-testid="report-date-to"
             />
           </div>
           <div>

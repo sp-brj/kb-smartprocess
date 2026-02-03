@@ -153,6 +153,7 @@ export default function TimePage() {
                 onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
                 required
+                data-testid="time-entry-project-select"
               >
                 <option value="">Проект...</option>
                 {projects.map((p) => (
@@ -167,6 +168,7 @@ export default function TimePage() {
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
                 required
+                data-testid="time-entry-date-input"
               />
             </div>
             <div>
@@ -178,6 +180,7 @@ export default function TimePage() {
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
                 required
                 min="1"
+                data-testid="time-entry-minutes-input"
               />
             </div>
             <div>
@@ -185,6 +188,7 @@ export default function TimePage() {
                 value={formData.workType}
                 onChange={(e) => setFormData({ ...formData, workType: e.target.value })}
                 className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+                data-testid="time-entry-work-type-select"
               >
                 {Object.entries(workTypeLabels).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
@@ -195,6 +199,7 @@ export default function TimePage() {
               <button
                 type="submit"
                 className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                data-testid="save-time-entry-button"
               >
                 Добавить
               </button>
@@ -207,6 +212,7 @@ export default function TimePage() {
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Описание работы..."
               className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+              data-testid="time-entry-description-input"
             />
           </div>
         </form>
