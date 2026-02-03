@@ -130,23 +130,3 @@ npm install
 npx playwright install chromium
 ```
 
----
-
-## Для AI-ассистента
-
-При работе с этим проектом:
-
-1. **Рабочая директория**: `10_Проекты (CHANGE)/Сайт для БЗ/code`
-2. **Перед тестами**: dev-сервер должен быть запущен (`npm run dev`)
-3. **После тестов**: запустить очистку (`npm run test:cleanup`)
-4. **Миграции**: после изменения `prisma/schema.prisma` → `npx prisma migrate dev`
-
-### Частые сценарии
-
-| Задача | Команда |
-|--------|---------|
-| Запустить dev | `npm run dev` |
-| Прогнать тесты | `npm run test:e2e:headed` |
-| Очистить тестовые данные | `npm run test:cleanup` |
-| Обновить схему БД | `npx prisma migrate dev` |
-| Посмотреть данные в БД | `npx prisma studio` |
