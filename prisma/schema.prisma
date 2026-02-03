@@ -23,11 +23,17 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Knowledge Base
   articles        Article[]
   articleVersions ArticleVersion[] @relation("VersionAuthor")
   articleViews    ArticleView[]
   searchQueries   SearchQuery[]
   apiKeys         ApiKey[]
+
+  // CRM
+  managedProjects Project[]   @relation("ProjectManager")
+  assignedTasks   Task[]      @relation("TaskAssignee")
+  timeEntries     TimeEntry[] @relation("TimeEntryUser")
 }
 
 model ApiKey {
@@ -278,4 +284,259 @@ model SearchQuery {
   @@index([userId])
   @@index([createdAt])
   @@index([resultsCount])
+}
+
+// =====================
+// CRM - CLIENTS
+// =====================
+
+model Client {
+  id            String       @id @default(cuid())
+  name          String       // Название компании
+  inn           String?      // ИНН
+  kpp           String?      // КПП
+  ogrn          String?      // ОГРН
+  legalAddress  String?      // Юридический адрес
+  actualAddress String?      // Фактический адрес
+  notes         String?      @db.Text // Заметки (Markdown)
+  status        ClientStatus @default(ACTIVE)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  contacts     ClientContact[]
+  bankAccounts ClientBankAccount[]
+  projects     Project[]
+
+  @@index([name])
+  @@index([inn])
+  @@index([status])
+}
+
+enum ClientStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model ClientContact {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name      String
+  position  String?  // Должность
+  phone     String?
+  email     String?
+  isPrimary Boolean  @default(false) // Основной контакт
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+model ClientBankAccount {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  bankName      String   // Название банка
+  bik           String   // БИК
+  accountNumber String   // Расчётный счёт
+  corrAccount   String?  // Корреспондентский счёт
+  isPrimary     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([clientId])
+}
+
+// =====================
+// CRM - PROJECTS
+// =====================
+
+model ProjectStatus {
+  id        String            @id @default(cuid())
+  name      String            // "Лид", "Переговоры", "Договор", "В работе", "Завершён"
+  color     String            // Hex цвет: #22c55e
+  order     Int               // Порядок в воронке
+  type      ProjectStatusType
+  isDefault Boolean           @default(false) // Статус по умолчанию для новых проектов
+  createdAt DateTime          @default(now())
+
+  projects Project[]
+
+  @@index([order])
+  @@index([type])
+}
+
+enum ProjectStatusType {
+  LEAD        // Лид
+  NEGOTIATION // Переговоры
+  CONTRACT    // Договор подписан
+  WORK        // В работе
+  DONE        // Завершён
+  CANCELLED   // Отменён
+}
+
+model Project {
+  id           String        @id @default(cuid())
+  name         String
+  description  String?       @db.Text // Markdown
+  clientId     String
+  client       Client        @relation(fields: [clientId], references: [id])
+  statusId     String
+  status       ProjectStatus @relation(fields: [statusId], references: [id])
+  type         ProjectType
+  plannedStart DateTime?
+  plannedEnd   DateTime?
+  actualStart  DateTime?
+  actualEnd    DateTime?
+  budget       Decimal?      @db.Decimal(12, 2) // Плановый бюджет
+  managerId    String
+  manager      User          @relation("ProjectManager", fields: [managerId], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  tasks       Task[]
+  timeEntries TimeEntry[]
+  payments    Payment[]
+
+  @@index([clientId])
+  @@index([statusId])
+  @@index([managerId])
+  @@index([type])
+  @@index([plannedEnd])
+}
+
+enum ProjectType {
+  IMPLEMENTATION // Внедрение
+  CONSULTING     // Консалтинг
+  DEVELOPMENT    // Доработка
+  SUPPORT        // Сопровождение
+}
+
+// =====================
+// CRM - TASKS
+// =====================
+
+model Task {
+  id             String       @id @default(cuid())
+  projectId      String
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?      @db.Text // Markdown
+  status         TaskStatus   @default(TODO)
+  priority       TaskPriority @default(MEDIUM)
+  assigneeId     String?
+  assignee       User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  deadline       DateTime?
+  estimatedHours Decimal?     @db.Decimal(5, 2) // Оценка времени в часах
+  order          Int          @default(0) // Для сортировки в канбане
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  checklist   ChecklistItem[]
+  timeEntries TimeEntry[]
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([priority])
+  @@index([deadline])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model ChecklistItem {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  text      String
+  completed Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+}
+
+// =====================
+// CRM - TIME TRACKING
+// =====================
+
+model TimeEntry {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  taskId      String?
+  task        Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User     @relation("TimeEntryUser", fields: [userId], references: [id])
+  date        DateTime @db.Date
+  startTime   DateTime? // Время начала (опционально)
+  endTime     DateTime? // Время окончания (опционально)
+  duration    Int      // Продолжительность в минутах (обязательно)
+  description String?  @db.Text
+  workType    WorkType
+  billable    Boolean  @default(true) // Оплачиваемая работа
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([taskId])
+  @@index([userId])
+  @@index([date])
+  @@index([workType])
+}
+
+enum WorkType {
+  CONSULTATION  // Консультация
+  DEVELOPMENT   // Разработка
+  TRAINING      // Обучение
+  TESTING       // Тестирование
+  DOCUMENTATION // Документация
+  MEETING       // Совещание
+  OTHER         // Прочее
+}
+
+// =====================
+// CRM - PAYMENTS
+// =====================
+
+model Payment {
+  id             String        @id @default(cuid())
+  projectId      String
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  amount         Decimal       @db.Decimal(12, 2)
+  date           DateTime      @db.Date
+  type           PaymentType
+  status         PaymentStatus @default(PENDING)
+  documentNumber String?       // Номер документа
+  documentDate   DateTime?     @db.Date
+  description    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([projectId])
+  @@index([date])
+  @@index([status])
+}
+
+enum PaymentType {
+  ADVANCE   // Аванс
+  MILESTONE // Этап
+  FINAL     // Финальная оплата
+}
+
+enum PaymentStatus {
+  PENDING   // Ожидается
+  RECEIVED  // Получена
+  CANCELLED // Отменена
 }
