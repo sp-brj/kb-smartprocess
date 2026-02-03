@@ -82,6 +82,7 @@ export default function TasksPage() {
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
+              data-testid="tasks-filter-active"
             >
               Активные
             </button>
@@ -92,6 +93,7 @@ export default function TasksPage() {
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
+              data-testid="tasks-filter-done"
             >
               Выполненные
             </button>
@@ -102,6 +104,7 @@ export default function TasksPage() {
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
+              data-testid="tasks-filter-all"
             >
               Все
             </button>
@@ -109,6 +112,7 @@ export default function TasksPage() {
           <Link
             href="/crm/tasks/new"
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            data-testid="new-task-button"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

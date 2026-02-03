@@ -79,6 +79,7 @@ export default function ProjectsPage() {
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
+              data-testid="projects-table-view"
             >
               Таблица
             </button>
@@ -89,6 +90,7 @@ export default function ProjectsPage() {
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
+              data-testid="projects-funnel-view"
             >
               Воронка
             </button>
@@ -114,6 +116,7 @@ export default function ProjectsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+          data-testid="projects-search"
         />
       </div>
 

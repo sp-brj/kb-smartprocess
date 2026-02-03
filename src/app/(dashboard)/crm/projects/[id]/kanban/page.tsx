@@ -135,7 +135,7 @@ export default function KanbanPage({
       </div>
 
       {/* Kanban board */}
-      <div className="grid grid-cols-4 gap-4 min-h-[500px]">
+      <div className="grid grid-cols-4 gap-4 min-h-[500px]" data-testid="kanban-board">
         {columns.map((status) => {
           const columnTasks = tasks.filter((t) => t.status === status);
           return (
@@ -144,6 +144,7 @@ export default function KanbanPage({
               className={`bg-muted/30 rounded-lg border-t-4 ${statusColors[status]}`}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, status)}
+              data-testid={`kanban-column-${status}`}
             >
               <div className="px-4 py-3 border-b border-border">
                 <div className="flex items-center justify-between">
@@ -188,6 +189,7 @@ function TaskCard({
       draggable
       onDragStart={() => onDragStart(task.id)}
       className="p-3 bg-card border border-border rounded-lg cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors"
+      data-testid={`kanban-task-${task.id}`}
     >
       <div className="flex items-start gap-2 mb-2">
         <span className={`text-sm mt-0.5 ${priorityColors[task.priority]}`}>●</span>
