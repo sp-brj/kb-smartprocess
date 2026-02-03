@@ -129,44 +129,39 @@ export function ResizableSidebar() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [toggleCollapsed]);
 
-  // Keep Sidebar mounted but hidden to avoid refetching data on every toggle
+  // Use margin-left transform to slide sidebar - no reflow, GPU accelerated
   return (
-    <>
-      {/* Expand button - shown when collapsed */}
-      {isCollapsed && (
-        <button
-          onClick={toggleCollapsed}
-          className="flex-shrink-0 m-2 p-2 rounded-md bg-card border border-border hover:bg-muted"
-          title="Развернуть сайдбар (Ctrl+B)"
-          data-testid="sidebar-expand-btn"
-        >
-          <svg className="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      )}
+    <div
+      className="relative flex-shrink-0 h-screen"
+      style={{
+        width: width,
+        marginLeft: isCollapsed ? -width : 0,
+      }}
+      data-testid="resizable-sidebar"
+    >
+      <Sidebar />
 
-      {/* Sidebar container - always mounted, hidden when collapsed */}
-      <div
-        className={`relative flex-shrink-0 ${isCollapsed ? "hidden" : ""}`}
-        style={{ width: isCollapsed ? 0 : width }}
-        data-testid="resizable-sidebar"
+      {/* Toggle button - always visible */}
+      <button
+        onClick={toggleCollapsed}
+        className="absolute top-3 z-20 p-1.5 rounded-md bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+        style={{
+          right: isCollapsed ? -40 : 12,
+        }}
+        title={isCollapsed ? "Развернуть сайдбар (Ctrl+B)" : "Скрыть сайдбар (Ctrl+B)"}
+        data-testid={isCollapsed ? "sidebar-expand-btn" : "sidebar-collapse-btn"}
       >
-        <Sidebar />
-
-        {/* Collapse button */}
-        <button
-          onClick={toggleCollapsed}
-          className="absolute top-3 right-3 z-20 p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"
-          title="Скрыть сайдбар (Ctrl+B)"
-          data-testid="sidebar-collapse-btn"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {isCollapsed ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          ) : (
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-        </button>
+          )}
+        </svg>
+      </button>
 
-        {/* Resizer handle */}
+      {/* Resizer handle - only when expanded */}
+      {!isCollapsed && (
         <div
           onMouseDown={handleMouseDown}
           className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 z-10 ${
@@ -174,7 +169,7 @@ export function ResizableSidebar() {
           }`}
           title="Потяните для изменения ширины"
         />
-      </div>
-    </>
+      )}
+    </div>
   );
 }
