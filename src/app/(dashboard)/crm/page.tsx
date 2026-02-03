@@ -282,7 +282,7 @@ export default async function CrmDashboardPage() {
                   <div>
                     <p className="font-medium text-foreground">{project.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {project.client.name}
+                      {project.client?.name ?? "Без клиента"}
                     </p>
                   </div>
                   <span

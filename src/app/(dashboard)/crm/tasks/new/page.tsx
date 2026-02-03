@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-type Project = { id: string; name: string; client: { name: string } };
+type Project = { id: string; name: string; client: { name: string } | null };
 type User = { id: string; name: string | null; email: string };
 
 function NewTaskForm() {
@@ -134,7 +134,7 @@ function NewTaskForm() {
               <option value="">Выберите проект</option>
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>
-                  {project.name} — {project.client.name}
+                  {project.name}{project.client?.name ? ` — ${project.client.name}` : ""}
                 </option>
               ))}
             </select>
