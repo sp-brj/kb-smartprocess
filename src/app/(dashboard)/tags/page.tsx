@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
+// Force dynamic rendering to avoid build-time DB connection issues
+export const dynamic = "force-dynamic";
+
 export default async function TagsPage() {
   const tags = await prisma.tag.findMany({
     include: {
