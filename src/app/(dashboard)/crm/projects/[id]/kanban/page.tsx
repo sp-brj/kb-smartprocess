@@ -17,7 +17,7 @@ type Task = {
 type Project = {
   id: string;
   name: string;
-  client: { id: string; name: string };
+  client: { id: string; name: string } | null;
 };
 
 const statusLabels: Record<string, string> = {
@@ -178,8 +178,9 @@ function TaskCard({
   onDragStart: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const completedCount = task.checklist.filter((i) => i.completed).length;
-  const totalCount = task.checklist.length;
+  const checklist = task.checklist || [];
+  const completedCount = checklist.filter((i) => i.completed).length;
+  const totalCount = checklist.length;
   const isOverdue = task.deadline && new Date(task.deadline) < new Date() && task.status !== "DONE";
 
   return (
@@ -211,9 +212,9 @@ function TaskCard({
         </div>
       )}
 
-      {expanded && task.checklist.length > 0 && (
+      {expanded && checklist.length > 0 && (
         <div className="space-y-1 mb-2">
-          {task.checklist.map((item) => (
+          {checklist.map((item) => (
             <div key={item.id} className="flex items-center gap-2 text-sm">
               <span className={item.completed ? "text-green-500" : "text-muted-foreground"}>
                 {item.completed ? "✓" : "○"}
