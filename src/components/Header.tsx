@@ -15,6 +15,13 @@ export function Header() {
       </div>
       <div className="flex items-center gap-4 shrink-0">
         <Link
+          href="/crm"
+          className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+          data-testid="crm-link"
+        >
+          CRM
+        </Link>
+        <Link
           href="/articles/new"
           className="bg-primary text-primary-foreground px-4 py-2 rounded text-sm hover:bg-accent"
           data-testid="new-article-btn"
