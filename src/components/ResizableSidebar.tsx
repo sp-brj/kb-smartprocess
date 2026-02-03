@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useSyncExternalStore } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Sidebar } from "./Sidebar";
 
 const MIN_WIDTH = 200;
@@ -9,72 +9,44 @@ const DEFAULT_WIDTH = 256;
 const STORAGE_KEY = "sidebar-width";
 const COLLAPSED_KEY = "sidebar-collapsed";
 
-function getStoredWidth(): number {
-  if (typeof window === "undefined") return DEFAULT_WIDTH;
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    const parsedWidth = parseInt(saved, 10);
-    if (parsedWidth >= MIN_WIDTH && parsedWidth <= MAX_WIDTH) {
-      return parsedWidth;
-    }
-  }
-  return DEFAULT_WIDTH;
-}
-
-function getStoredCollapsed(): boolean {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(COLLAPSED_KEY) === "true";
-}
-
-function subscribe(callback: () => void) {
-  window.addEventListener("storage", callback);
-  return () => window.removeEventListener("storage", callback);
-}
-
-function useStoredWidth() {
-  return useSyncExternalStore(
-    subscribe,
-    getStoredWidth,
-    () => DEFAULT_WIDTH
-  );
-}
-
-function useStoredCollapsed() {
-  return useSyncExternalStore(
-    subscribe,
-    getStoredCollapsed,
-    () => false
-  );
-}
-
 export function ResizableSidebar() {
-  const storedWidth = useStoredWidth();
-  const storedCollapsed = useStoredCollapsed();
-  const [width, setWidth] = useState(storedWidth);
-  const [isCollapsed, setIsCollapsed] = useState(storedCollapsed);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
+  const initialized = useRef(false);
 
-  // Sync with stored width on mount
+  // Initialize from localStorage once on mount
   useEffect(() => {
-    setWidth(storedWidth);
-  }, [storedWidth]);
+    if (initialized.current) return;
+    initialized.current = true;
 
-  // Sync with stored collapsed state on mount
-  useEffect(() => {
-    setIsCollapsed(storedCollapsed);
-  }, [storedCollapsed]);
+    const savedWidth = localStorage.getItem(STORAGE_KEY);
+    if (savedWidth) {
+      const parsed = parseInt(savedWidth, 10);
+      if (parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
+        setWidth(parsed);
+      }
+    }
 
-  // Save width to localStorage when resizing ends
+    const savedCollapsed = localStorage.getItem(COLLAPSED_KEY);
+    if (savedCollapsed === "true") {
+      setIsCollapsed(true);
+    }
+  }, []);
+
+  // Save collapsed state
   useEffect(() => {
-    if (!isResizing && width !== DEFAULT_WIDTH) {
+    if (!initialized.current) return;
+    localStorage.setItem(COLLAPSED_KEY, isCollapsed.toString());
+  }, [isCollapsed]);
+
+  // Save width when resizing ends
+  useEffect(() => {
+    if (!initialized.current) return;
+    if (!isResizing) {
       localStorage.setItem(STORAGE_KEY, width.toString());
     }
   }, [isResizing, width]);
-
-  // Save collapsed state to localStorage
-  useEffect(() => {
-    localStorage.setItem(COLLAPSED_KEY, isCollapsed.toString());
-  }, [isCollapsed]);
 
   const toggleCollapsed = useCallback(() => {
     setIsCollapsed(prev => !prev);
@@ -85,29 +57,23 @@ export function ResizableSidebar() {
     setIsResizing(true);
   }, []);
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isResizing) return;
+  // Resizing handlers with stable refs to avoid re-adding listeners
+  useEffect(() => {
+    if (!isResizing) return;
+
+    function handleMouseMove(e: MouseEvent) {
       const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, e.clientX));
       setWidth(newWidth);
-    },
-    [isResizing]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-    } else {
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
     }
+
+    function handleMouseUp() {
+      setIsResizing(false);
+    }
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
 
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
@@ -115,21 +81,20 @@ export function ResizableSidebar() {
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
     };
-  }, [isResizing, handleMouseMove, handleMouseUp]);
+  }, [isResizing]);
 
   // Keyboard shortcut: Cmd/Ctrl + B to toggle sidebar
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "b") {
         e.preventDefault();
-        toggleCollapsed();
+        setIsCollapsed(prev => !prev);
       }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [toggleCollapsed]);
+  }, []);
 
-  // Use margin-left transform to slide sidebar - no reflow, GPU accelerated
   return (
     <div
       className="relative flex-shrink-0 h-screen"
@@ -141,7 +106,7 @@ export function ResizableSidebar() {
     >
       <Sidebar />
 
-      {/* Toggle button - always visible */}
+      {/* Toggle button */}
       <button
         onClick={toggleCollapsed}
         className="absolute top-3 z-20 p-1.5 rounded-md bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground"
@@ -160,7 +125,7 @@ export function ResizableSidebar() {
         </svg>
       </button>
 
-      {/* Resizer handle - only when expanded */}
+      {/* Resizer handle */}
       {!isCollapsed && (
         <div
           onMouseDown={handleMouseDown}
