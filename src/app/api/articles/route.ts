@@ -1,78 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { generateSlug, extractWikilinks } from "@/lib/wikilinks";
-
-/**
- * Создает связи ArticleLink для wiki-ссылок в контенте статьи
- */
-async function createArticleLinks(articleId: string, content: string) {
-  const wikilinks = extractWikilinks(content);
-  if (wikilinks.length === 0) return;
-
-  // Найти существующие статьи по заголовкам
-  const titles = wikilinks.map((l) => l.title);
-  const existingArticles = await prisma.article.findMany({
-    where: {
-      OR: [
-        { title: { in: titles, mode: "insensitive" } },
-        { slug: { in: titles.map((t) => generateSlug(t)) } },
-      ],
-    },
-    select: { id: true, title: true, slug: true },
-  });
-
-  // Создать map для быстрого поиска
-  const articleMap = new Map<string, string>();
-  existingArticles.forEach((a) => {
-    articleMap.set(a.title.toLowerCase(), a.id);
-    articleMap.set(a.slug, a.id);
-  });
-
-  // Создать связи
-  const linkData = wikilinks.map((link) => {
-    const targetId =
-      articleMap.get(link.title.toLowerCase()) ||
-      articleMap.get(generateSlug(link.title)) ||
-      null;
-
-    return {
-      sourceId: articleId,
-      targetId,
-      targetTitle: link.title,
-    };
-  });
-
-  await prisma.articleLink.createMany({
-    data: linkData,
-    skipDuplicates: true,
-  });
-}
-
-/**
- * Обновляет входящие ссылки когда создается новая статья
- * (связывает "битые" ссылки с новой статьей)
- */
-async function linkOrphanedReferences(articleId: string, title: string) {
-  const slug = generateSlug(title);
-
-  await prisma.articleLink.updateMany({
-    where: {
-      targetId: null,
-      OR: [
-        { targetTitle: { equals: title, mode: "insensitive" } },
-        { targetTitle: { equals: slug, mode: "insensitive" } },
-      ],
-    },
-    data: { targetId: articleId },
-  });
-}
+import { generateSlug } from "@/lib/wikilinks";
+import { createArticleLinks, linkOrphanedReferences } from "@/lib/wikilinks-db";
+import { authenticateRequest, hasPermission } from "@/lib/api-auth";
 
 // GET /api/articles - list articles
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const auth = await authenticateRequest(request);
+  if (!auth.authenticated) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -107,8 +42,8 @@ export async function GET(request: NextRequest) {
 
 // POST /api/articles - create article
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
+  const auth = await authenticateRequest(request);
+  if (!auth.authenticated || !hasPermission(auth, "write")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -139,7 +74,7 @@ export async function POST(request: NextRequest) {
           status: articleStatus,
           publishedAt: articleStatus === "PUBLISHED" ? new Date() : null,
           folderId: folderId || null,
-          authorId: session.user.id,
+          authorId: auth.userId!,
         },
         include: {
           author: { select: { id: true, name: true, email: true } },
@@ -157,7 +92,7 @@ export async function POST(request: NextRequest) {
           status: newArticle.status,
           changeType: "CREATE",
           articleId: newArticle.id,
-          authorId: session.user.id,
+          authorId: auth.userId!,
         },
       });
 

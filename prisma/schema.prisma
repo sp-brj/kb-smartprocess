@@ -27,6 +27,24 @@ model User {
   articleVersions ArticleVersion[] @relation("VersionAuthor")
   articleViews    ArticleView[]
   searchQueries   SearchQuery[]
+  apiKeys         ApiKey[]
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String                          // Название ключа ("Clawdbot", "Mobile App")
+  key         String    @unique               // Хеш ключа (bcrypt)
+  keyPrefix   String                          // Первые 8 символов для идентификации
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissions String[]  @default(["read"])    // ["read", "write", "admin"]
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  @@index([keyPrefix])
+  @@index([userId])
 }
 
 enum Role {

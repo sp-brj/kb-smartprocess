@@ -1,59 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { extractWikilinks, generateSlug } from "@/lib/wikilinks";
-
-/**
- * Обновляет связи ArticleLink при изменении контента
- */
-async function updateArticleLinks(articleId: string, content: string) {
-  // Удаляем старые ссылки
-  await prisma.articleLink.deleteMany({ where: { sourceId: articleId } });
-
-  const wikilinks = extractWikilinks(content);
-  if (wikilinks.length === 0) return;
-
-  // Найти существующие статьи
-  const titles = wikilinks.map((l) => l.title);
-  const existingArticles = await prisma.article.findMany({
-    where: {
-      OR: [
-        { title: { in: titles, mode: "insensitive" } },
-        { slug: { in: titles.map((t) => generateSlug(t)) } },
-      ],
-    },
-    select: { id: true, title: true, slug: true },
-  });
-
-  const articleMap = new Map<string, string>();
-  existingArticles.forEach((a) => {
-    articleMap.set(a.title.toLowerCase(), a.id);
-    articleMap.set(a.slug, a.id);
-  });
-
-  const linkData = wikilinks.map((link) => ({
-    sourceId: articleId,
-    targetId:
-      articleMap.get(link.title.toLowerCase()) ||
-      articleMap.get(generateSlug(link.title)) ||
-      null,
-    targetTitle: link.title,
-  }));
-
-  await prisma.articleLink.createMany({
-    data: linkData,
-    skipDuplicates: true,
-  });
-}
+import { syncArticleLinks } from "@/lib/wikilinks-db";
+import { authenticateRequest, hasPermission } from "@/lib/api-auth";
 
 // GET /api/articles/[id]
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const auth = await authenticateRequest(request);
+  if (!auth.authenticated) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -89,8 +45,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
+  const auth = await authenticateRequest(request);
+  if (!auth.authenticated || !hasPermission(auth, "write")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -132,7 +88,7 @@ export async function PATCH(
             status: status ?? currentArticle.status,
             changeType: "UPDATE",
             articleId: id,
-            authorId: session.user.id,
+            authorId: auth.userId!,
           },
         });
       }
@@ -165,7 +121,7 @@ export async function PATCH(
 
     // Обновляем wiki-ссылки если изменился контент
     if (content !== undefined) {
-      await updateArticleLinks(id, content);
+      await syncArticleLinks(id, content);
     }
 
     // Преобразуем теги
@@ -186,8 +142,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const auth = await authenticateRequest(request);
+  if (!auth.authenticated || !hasPermission(auth, "write")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

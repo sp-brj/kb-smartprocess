@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { authenticateRequest, hasPermission } from "@/lib/api-auth";
 
 // GET /api/tags/[id] - получить тег по id или slug
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const auth = await authenticateRequest(request);
+  if (!auth.authenticated) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -36,8 +35,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const auth = await authenticateRequest(request);
+  if (!auth.authenticated || !hasPermission(auth, "write")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -70,8 +69,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const auth = await authenticateRequest(request);
+  if (!auth.authenticated || !hasPermission(auth, "write")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

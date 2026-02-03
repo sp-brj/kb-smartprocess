@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { v2 as cloudinary } from "cloudinary";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { authenticateRequest, hasPermission } from "@/lib/api-auth";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -13,12 +12,6 @@ function configureCloudinary() {
   const api_key = process.env.CLOUDINARY_API_KEY;
   const api_secret = process.env.CLOUDINARY_API_SECRET;
 
-  console.log("Cloudinary config:", {
-    cloud_name: cloud_name ? "set" : "MISSING",
-    api_key: api_key ? `${api_key.substring(0, 4)}...` : "MISSING",
-    api_secret: api_secret ? "set" : "MISSING",
-  });
-
   cloudinary.config({
     cloud_name,
     api_key,
@@ -28,9 +21,9 @@ function configureCloudinary() {
 
 export async function POST(request: NextRequest) {
   configureCloudinary();
-  const session = await getServerSession(authOptions);
+  const auth = await authenticateRequest(request);
 
-  if (!session?.user?.id) {
+  if (!auth.authenticated || !hasPermission(auth, "write")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -82,7 +75,7 @@ export async function POST(request: NextRequest) {
         url: uploadResult.secure_url,
         caption: caption || null,
         articleId: articleId || null,
-        uploadedBy: session.user.id,
+        uploadedBy: auth.userId!,
       },
     });
 
@@ -104,9 +97,9 @@ export async function POST(request: NextRequest) {
 // DELETE - удаление изображения
 export async function DELETE(request: NextRequest) {
   configureCloudinary();
-  const session = await getServerSession(authOptions);
+  const auth = await authenticateRequest(request);
 
-  if (!session?.user?.id) {
+  if (!auth.authenticated || !hasPermission(auth, "write")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
