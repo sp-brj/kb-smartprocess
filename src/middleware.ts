@@ -24,7 +24,8 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    // Protect all routes except public ones (removed /register)
-    "/((?!api/auth|login|share|_next/static|_next/image|favicon.ico).*)",
+    // Protect all routes except public ones
+    // API routes handle their own auth via authenticateRequest()
+    "/((?!api|login|share|_next/static|_next/image|favicon.ico).*)",
   ],
 };
