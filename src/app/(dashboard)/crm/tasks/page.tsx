@@ -54,13 +54,15 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "active" | "done">("active");
-  const [view, setView] = useState<"list" | "kanban">("kanban");
+  const [scope, setScope] = useState<"my" | "all">("all"); // По умолчанию все задачи
+  const [view, setView] = useState<"list" | "kanban">("list");
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchTasks() {
       setLoading(true);
-      const res = await fetch("/api/tasks?my=true");
+      const url = scope === "my" ? "/api/tasks?my=true" : "/api/tasks";
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setTasks(data);
@@ -68,7 +70,7 @@ export default function TasksPage() {
       setLoading(false);
     }
     fetchTasks();
-  }, []);
+  }, [scope]);
 
   const filteredTasks = tasks.filter((task) => {
     if (filter === "active") return task.status !== "DONE";
@@ -131,7 +133,34 @@ export default function TasksPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-foreground">Мои задачи</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl font-semibold text-foreground">Задачи</h2>
+          {/* Scope switcher (My/All) */}
+          <div className="flex bg-muted rounded-lg p-1">
+            <button
+              onClick={() => setScope("all")}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                scope === "all"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid="tasks-scope-all"
+            >
+              Все
+            </button>
+            <button
+              onClick={() => setScope("my")}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                scope === "my"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              data-testid="tasks-scope-my"
+            >
+              Мои
+            </button>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           {/* View switcher */}
           <div className="flex bg-muted rounded-lg p-1">
