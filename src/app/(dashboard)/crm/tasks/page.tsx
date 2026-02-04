@@ -347,15 +347,15 @@ function ListTaskCard({ task }: { task: Task }) {
   return (
     <Link
       href={`/crm/projects/${task.project.id}/kanban`}
-      className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors"
+      className="flex items-center gap-3 py-2 px-4 hover:bg-muted/50 transition-colors"
       data-testid={`tasks-list-task-${task.id}`}
     >
-      <span className={`text-sm ${priorityColors[task.priority]}`}>●</span>
-      <div className="flex-1 min-w-0">
-        <div className="font-medium text-foreground">{task.title}</div>
-        <div className="text-sm text-muted-foreground">{task.project.name}</div>
+      <span className={`text-xs ${priorityColors[task.priority]}`}>●</span>
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <span className="font-medium text-foreground truncate">{task.title}</span>
+        <span className="text-xs text-muted-foreground shrink-0">• {task.project.name}</span>
       </div>
-      <div className="flex items-center gap-4 text-sm">
+      <div className="flex items-center gap-3 text-xs shrink-0">
         {task.checklistTotal > 0 && (
           <span className="text-muted-foreground">
             ✓ {task.checklistCompleted}/{task.checklistTotal}
@@ -366,7 +366,7 @@ function ListTaskCard({ task }: { task: Task }) {
             {new Date(task.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
           </span>
         )}
-        <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[task.status]}`}>
+        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${statusColors[task.status]}`}>
           {statusLabels[task.status]}
         </span>
       </div>
