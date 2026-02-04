@@ -7,20 +7,25 @@ import Link from "next/link";
 type Project = { id: string; name: string; client: { name: string } | null };
 type User = { id: string; name: string | null; email: string };
 
+type Epic = { id: string; title: string };
+
 function NewTaskForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedProjectId = searchParams.get("projectId");
+  const preselectedParentId = searchParams.get("parentId");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [epics, setEpics] = useState<Epic[]>([]);
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     projectId: preselectedProjectId || "",
+    parentId: preselectedParentId || "",
     assigneeId: "",
     priority: "MEDIUM",
     deadline: "",
@@ -41,6 +46,23 @@ function NewTaskForm() {
     }
     fetchData();
   }, []);
+
+  // Загрузка эпиков при выборе проекта
+  useEffect(() => {
+    async function fetchEpics() {
+      if (!formData.projectId) {
+        setEpics([]);
+        return;
+      }
+      const res = await fetch(`/api/tasks?projectId=${formData.projectId}&topLevel=true`);
+      if (res.ok) {
+        const tasks = await res.json();
+        // Эпики = задачи верхнего уровня (потенциально могут иметь подзадачи)
+        setEpics(tasks.map((t: { id: string; title: string }) => ({ id: t.id, title: t.title })));
+      }
+    }
+    fetchEpics();
+  }, [formData.projectId]);
 
   function addChecklistItem() {
     if (newItem.trim()) {
@@ -64,6 +86,7 @@ function NewTaskForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          parentId: formData.parentId || undefined,
           checklist: checklist.length > 0 ? checklist : undefined,
         }),
       });
@@ -126,7 +149,7 @@ function NewTaskForm() {
             </label>
             <select
               value={formData.projectId}
-              onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, projectId: e.target.value, parentId: "" })}
               className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
               required
               data-testid="task-project-select"
@@ -139,6 +162,29 @@ function NewTaskForm() {
               ))}
             </select>
           </div>
+
+          {formData.projectId && epics.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Эпик (родительская задача)
+              </label>
+              <select
+                value={formData.parentId}
+                onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
+                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <option value="">— Без эпика (это будет эпик) —</option>
+                {epics.map((epic) => (
+                  <option key={epic.id} value={epic.id}>
+                    📦 {epic.title}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formData.parentId ? "Задача будет добавлена в выбранный эпик" : "Задача станет эпиком — контейнером для подзадач"}
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>

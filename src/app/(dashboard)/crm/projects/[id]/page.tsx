@@ -11,6 +11,8 @@ type Task = {
   priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
   deadline: string | null;
   assignee: { id: string; name: string | null; email: string } | null;
+  subtasks?: Task[];
+  _count?: { subtasks: number };
 };
 
 type Payment = {
@@ -317,42 +319,125 @@ export default function ProjectPage({
             </div>
           )}
 
-          {/* Tasks */}
+          {/* Tasks with Epics */}
           <div className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-medium text-foreground">Задачи</h3>
-              <Link
-                href={`/crm/tasks/new?projectId=${id}`}
-                className="text-sm text-primary hover:text-primary/80"
-              >
-                + Добавить
-              </Link>
+              <h3 className="font-medium text-foreground">Структура работ</h3>
+              <div className="flex gap-2">
+                <Link
+                  href={`/crm/tasks/new?projectId=${id}`}
+                  className="text-sm text-primary hover:text-primary/80"
+                >
+                  + Эпик
+                </Link>
+              </div>
             </div>
             {project.tasks.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Нет задач</p>
+              <p className="text-muted-foreground text-sm">Нет задач. Создайте первый эпик для структурирования работ.</p>
             ) : (
-              <div className="space-y-2">
-                {project.tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm ${priorityColors[task.priority]}`}>●</span>
-                      <div>
-                        <div className="font-medium text-foreground">{task.title}</div>
-                        {task.assignee && (
-                          <div className="text-sm text-muted-foreground">
-                            {task.assignee.name || task.assignee.email}
+              <div className="space-y-4">
+                {project.tasks.map((task) => {
+                  const isEpic = (task._count?.subtasks || 0) > 0 || (task.subtasks && task.subtasks.length > 0);
+                  const subtasks = task.subtasks || [];
+                  const completedSubtasks = subtasks.filter(s => s.status === "DONE").length;
+                  const totalSubtasks = subtasks.length;
+                  const progress = totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0;
+
+                  if (isEpic) {
+                    // Эпик с подзадачами
+                    return (
+                      <div key={task.id} className="border border-border rounded-lg overflow-hidden">
+                        {/* Epic header */}
+                        <div className="p-4 bg-muted/30">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg">📦</span>
+                              <div>
+                                <div className="font-medium text-foreground">{task.title}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {completedSubtasks} / {totalSubtasks} задач выполнено
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={`/crm/tasks/new?projectId=${id}&parentId=${task.id}`}
+                                className="text-xs text-primary hover:text-primary/80"
+                              >
+                                + Задача
+                              </Link>
+                              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                                {taskStatusLabels[task.status]}
+                              </span>
+                            </div>
+                          </div>
+                          {/* Progress bar */}
+                          {totalSubtasks > 0 && (
+                            <div className="mt-3">
+                              <div className="w-full bg-muted rounded-full h-1.5">
+                                <div
+                                  className="h-1.5 rounded-full bg-green-500 transition-all"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {/* Subtasks */}
+                        {subtasks.length > 0 && (
+                          <div className="divide-y divide-border">
+                            {subtasks.map((subtask) => (
+                              <div
+                                key={subtask.id}
+                                className="flex items-center justify-between p-3 pl-12 hover:bg-muted/20"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className={`text-sm ${priorityColors[subtask.priority]}`}>●</span>
+                                  <div>
+                                    <div className={`text-sm ${subtask.status === "DONE" ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                                      {subtask.title}
+                                    </div>
+                                    {subtask.assignee && (
+                                      <div className="text-xs text-muted-foreground">
+                                        {subtask.assignee.name || subtask.assignee.email}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                                  {taskStatusLabels[subtask.status]}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
-                    </div>
-                    <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                      {taskStatusLabels[task.status]}
-                    </span>
-                  </div>
-                ))}
+                    );
+                  } else {
+                    // Обычная задача (без подзадач)
+                    return (
+                      <div
+                        key={task.id}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`text-sm ${priorityColors[task.priority]}`}>●</span>
+                          <div>
+                            <div className="font-medium text-foreground">{task.title}</div>
+                            {task.assignee && (
+                              <div className="text-sm text-muted-foreground">
+                                {task.assignee.name || task.assignee.email}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                          {taskStatusLabels[task.status]}
+                        </span>
+                      </div>
+                    );
+                  }
+                })}
               </div>
             )}
           </div>

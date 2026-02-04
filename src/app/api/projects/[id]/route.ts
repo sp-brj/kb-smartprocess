@@ -24,7 +24,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       tasks: {
         include: {
           assignee: { select: { id: true, name: true, email: true } },
+          subtasks: {
+            include: {
+              assignee: { select: { id: true, name: true, email: true } },
+            },
+            orderBy: [{ status: "asc" }, { order: "asc" }],
+          },
+          _count: { select: { subtasks: true } },
         },
+        where: { parentId: null }, // Только верхнеуровневые (эпики и задачи без родителя)
         orderBy: [{ status: "asc" }, { order: "asc" }],
       },
       payments: {
