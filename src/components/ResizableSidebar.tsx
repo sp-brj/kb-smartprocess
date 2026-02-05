@@ -107,7 +107,7 @@ export function ResizableSidebar() {
         {/* Toggle button - moves with sidebar */}
         <button
           onClick={toggleCollapsed}
-          className="absolute top-3 -right-10 z-20 p-1.5 rounded-md bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute top-14 -right-10 z-20 p-1.5 rounded-md bg-card border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           title={isCollapsed ? "Развернуть сайдбар (Ctrl+B)" : "Скрыть сайдбар (Ctrl+B)"}
           data-testid={isCollapsed ? "sidebar-expand-btn" : "sidebar-collapse-btn"}
         >
