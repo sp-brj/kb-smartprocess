@@ -8,7 +8,6 @@ import { UserMenu } from "./UserMenu";
 export function Header() {
   const pathname = usePathname();
   const isCRM = pathname.startsWith("/crm");
-  const isTasks = pathname.startsWith("/tasks");
 
   return (
     <header className="bg-card border-b border-border px-6 py-4 flex justify-between items-center gap-4">
@@ -17,7 +16,7 @@ export function Header() {
         <Link
           href="/"
           className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            !isCRM && !isTasks
+            !isCRM
               ? "bg-primary/10 text-primary"
               : "text-muted-foreground hover:text-foreground hover:bg-muted"
           }`}
@@ -46,37 +45,21 @@ export function Header() {
             CRM
           </span>
         </Link>
-        <Link
-          href="/tasks"
-          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            isTasks
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted"
-          }`}
-          data-testid="tasks-link"
-        >
-          <span className="flex items-center gap-1.5">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            Задачи
-          </span>
-        </Link>
       </div>
 
       {/* Search - only in KB mode */}
-      {!isCRM && !isTasks && (
+      {!isCRM && (
         <div className="flex-1 max-w-md">
           <SearchBox />
         </div>
       )}
 
-      {/* Spacer when not in KB mode */}
-      {(isCRM || isTasks) && <div className="flex-1" />}
+      {/* Spacer when in CRM mode */}
+      {isCRM && <div className="flex-1" />}
 
       {/* Actions */}
       <div className="flex items-center gap-4 shrink-0">
-        {!isCRM && !isTasks && (
+        {!isCRM && (
           <Link
             href="/articles/new"
             className="bg-primary text-primary-foreground px-4 py-2 rounded text-sm hover:bg-accent"
