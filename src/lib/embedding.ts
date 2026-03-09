@@ -14,6 +14,17 @@ function getBaseUrl(): string {
   return process.env.OLLAMA_BASE_URL || DEFAULT_OLLAMA_BASE_URL;
 }
 
+function getHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const clientId = process.env.CF_ACCESS_CLIENT_ID;
+  const clientSecret = process.env.CF_ACCESS_CLIENT_SECRET;
+  if (clientId && clientSecret) {
+    headers["CF-Access-Client-Id"] = clientId;
+    headers["CF-Access-Client-Secret"] = clientSecret;
+  }
+  return headers;
+}
+
 /**
  * Embed a single text string using Ollama API
  * Returns a vector of 2560 dimensions
@@ -35,7 +46,7 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
   try {
     response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getHeaders(),
       body: JSON.stringify({
         model: EMBEDDING_MODEL,
         input: texts,
