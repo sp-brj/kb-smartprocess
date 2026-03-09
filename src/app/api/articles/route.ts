@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { generateSlug } from "@/lib/wikilinks";
 import { createArticleLinks, linkOrphanedReferences } from "@/lib/wikilinks-db";
 import { authenticateRequest, hasPermission } from "@/lib/api-auth";
+import { reindexArticle } from "@/lib/reindex";
 
 // GET /api/articles - list articles
 export async function GET(request: NextRequest) {
@@ -117,6 +118,11 @@ export async function POST(request: NextRequest) {
       ...article,
       tags: article.tags.map((at) => at.tag),
     };
+
+    // Fire-and-forget reindex (don't await, don't block response)
+    reindexArticle(article.id).catch((err) =>
+      console.error("Reindex error:", err)
+    );
 
     return NextResponse.json(articleWithTags, { status: 201 });
   } catch (error) {

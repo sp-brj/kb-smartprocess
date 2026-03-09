@@ -1,5 +1,6 @@
 import { ResizableSidebar } from "@/components/ResizableSidebar";
 import { Header } from "@/components/Header";
+import { ChatWidget } from "@/components/ChatWidget";
 
 export default async function DashboardLayout({
   children,
@@ -14,6 +15,7 @@ export default async function DashboardLayout({
         <Header />
 
         <main className="flex-1 p-6 overflow-auto">{children}</main>
+        <ChatWidget />
       </div>
     </div>
   );

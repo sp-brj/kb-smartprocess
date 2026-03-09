@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { syncArticleLinks } from "@/lib/wikilinks-db";
 import { authenticateRequest, hasPermission } from "@/lib/api-auth";
+import { reindexArticle, deleteArticleChunks } from "@/lib/reindex";
 
 // GET /api/articles/[id]
 export async function GET(
@@ -130,6 +131,11 @@ export async function PATCH(
       tags: article.tags.map((at) => at.tag),
     };
 
+    // Fire-and-forget reindex (don't await, don't block response)
+    reindexArticle(id).catch((err) =>
+      console.error("Reindex error:", err)
+    );
+
     return NextResponse.json(articleWithTags);
   } catch (error) {
     console.error("Update article error:", error);
@@ -151,6 +157,12 @@ export async function DELETE(
 
   try {
     await prisma.article.delete({ where: { id } });
+
+    // Chunks are cascade-deleted by FK, but clean up explicitly too
+    deleteArticleChunks(id).catch((err) =>
+      console.error("Delete chunks error:", err)
+    );
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Delete article error:", error);

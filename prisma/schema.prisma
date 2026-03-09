@@ -98,11 +98,30 @@ model Article {
   images        Image[]
   attachments   Attachment[]
   views         ArticleView[]
+  chunks        ArticleChunk[]
 }
 
 enum Status {
   DRAFT
   PUBLISHED
+}
+
+// =====================
+// AI CHAT - EMBEDDINGS
+// =====================
+
+model ArticleChunk {
+  id          String                   @id @default(cuid())
+  articleId   String
+  article     Article                  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  content     String                   @db.Text
+  headingPath String
+  chunkIndex  Int
+  contentHash String
+  embedding   Unsupported("vector(2560)")
+  createdAt   DateTime                 @default(now())
+
+  @@index([articleId])
 }
 
 // =====================
