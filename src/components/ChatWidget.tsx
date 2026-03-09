@@ -133,7 +133,14 @@ export function ChatWidget() {
       });
 
       if (!response.ok) {
-        dispatch({ type: "APPEND_TOKEN", content: "Ошибка при обращении к AI. Попробуйте позже." });
+        let errorMsg = "Ошибка при обращении к AI. Попробуйте позже.";
+        try {
+          const errData = await response.json();
+          if (errData.error) errorMsg = errData.error;
+        } catch {
+          // ignore
+        }
+        dispatch({ type: "APPEND_TOKEN", content: errorMsg });
         dispatch({ type: "FINISH_LOADING" });
         return;
       }
