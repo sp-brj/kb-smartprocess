@@ -1,0 +1,12 @@
+services:
+  kb-mcp:
+    build: .
+    container_name: kb-mcp
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8014:8014"
+    env_file:
+      - .env
+    environment:
+      - KB_URL=https://kb.smartprocess.ru
+      - MCP_PORT=8014
