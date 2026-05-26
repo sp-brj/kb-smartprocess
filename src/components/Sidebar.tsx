@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { RecentArticles } from "./RecentArticles";
-import { StatsWidget } from "./analytics/StatsWidget";
 
 interface Folder {
   id: string;
@@ -326,7 +325,6 @@ export function Sidebar() {
         </nav>
       </div>
       <RecentArticles />
-      <StatsWidget />
     </aside>
   );
 }
