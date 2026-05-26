@@ -64,8 +64,7 @@ npm run dev
 | `NEXTAUTH_SECRET` | Сгенерировать: `openssl rand -base64 32` |
 | `NEXTAUTH_URL` | `http://localhost:3000` для локалки |
 | `CLOUDINARY_*` | cloudinary.com → Dashboard. Можно дать общие ключи проекта |
-| `OPENAI_API_KEY` | Личный или общий ключ OpenAI (для AI-чата, опционально) |
-| `OLLAMA_BASE_URL` | Опционально, для локального RAG |
+| `OPENAI_API_KEY` | Личный или общий ключ OpenAI (для AI-чата: embeddings + gpt-4o-mini) |
 
 ⚠️ **Никогда не коммить `.env.local`** — он в `.gitignore`.
 

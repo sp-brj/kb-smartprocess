@@ -5,7 +5,7 @@
  * 1. Compute SHA256 hash of content
  * 2. Skip if existing chunks have the same hash
  * 3. Chunk article content
- * 4. Embed chunks via Ollama
+ * 4. Embed chunks via OpenAI
  * 5. Replace old chunks with new ones
  *
  * Run: npx tsx scripts/index-articles.ts
