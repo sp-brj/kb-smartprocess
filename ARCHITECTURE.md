@@ -1,10 +1,8 @@
-# Архитектура проекта: База знаний + CRM SmartProcess
+# Архитектура проекта: База знаний SmartProcess
 
 ## Что это за проект
 
-Корпоративный портал для компании SmartProcess:
-1. **База знаний** — хранение, организация и поиск внутренней документации с wiki-ссылками
-2. **CRM модуль** — управление проектами консалтинга по 1С: клиенты, проекты, задачи, таймлоги, финансы
+**База знаний** SmartProcess — корпоративный портал для хранения, организации и поиска внутренней документации с поддержкой wiki-ссылок, тегов и версионирования.
 
 **Репозиторий:** https://github.com/sp-brj/kb-smartprocess
 
@@ -43,23 +41,11 @@ code/
 │   │   │   ├── tags/          # Теги
 │   │   │   ├── search/        # Поиск
 │   │   │   ├── admin/         # Админ-панель
-│   │   │   ├── crm/           # CRM модуль
-│   │   │   │   ├── clients/   # Клиенты
-│   │   │   │   ├── projects/  # Проекты + канбан
-│   │   │   │   ├── tasks/     # Задачи
-│   │   │   │   ├── time/      # Таймлоги + отчёты
-│   │   │   │   └── page.tsx   # Dashboard CRM
 │   │   │   └── layout.tsx     # Layout с сайдбаром
 │   │   ├── api/               # API endpoints
 │   │   │   ├── articles/      # CRUD статей + versions, backlinks, tags
 │   │   │   ├── folders/       # CRUD папок
 │   │   │   ├── tags/          # CRUD тегов
-│   │   │   ├── clients/       # CRM: клиенты, контакты, реквизиты
-│   │   │   ├── projects/      # CRM: проекты
-│   │   │   ├── project-statuses/ # CRM: статусы воронки
-│   │   │   ├── tasks/         # CRM: задачи, чеклисты
-│   │   │   ├── time-entries/  # CRM: учёт времени
-│   │   │   ├── payments/      # CRM: оплаты
 │   │   │   ├── search/        # Полнотекстовый поиск
 │   │   │   ├── share/         # Публичный доступ
 │   │   │   └── auth/          # NextAuth + регистрация
@@ -204,54 +190,7 @@ code/
 
 ---
 
-## CRM Модуль
-
-### Клиенты (`/crm/clients`)
-- Полная карточка: название, ИНН, КПП, ОГРН, адреса
-- Контакты: несколько контактных лиц с телефонами и email
-- Банковские реквизиты: несколько счетов
-- Статус: ACTIVE, POTENTIAL, ARCHIVED
-
-### Проекты (`/crm/projects`)
-- Воронка статусов: Лид → Переговоры → Договор → В работе → Завершён → Отменён
-- Типы: Внедрение, Консалтинг, Доработка, Сопровождение
-- Бюджет и плановые/фактические даты
-- Привязка к клиенту и менеджеру
-
-### Задачи (`/crm/tasks`)
-- Канбан-доска: TODO → IN_PROGRESS → REVIEW → DONE
-- Приоритеты: LOW, MEDIUM, HIGH, URGENT
-- Чеклисты внутри задач
-- Привязка к проекту и исполнителю
-
-### Учёт времени (`/crm/time`)
-- Журнал времени с быстрым добавлением
-- Типы работ: Консультация, Разработка, Обучение, Тестирование, и др.
-- Отчёт с группировкой по проекту/сотруднику/типу/дню
-- Флаг billable для выставления счетов
-
-### Финансы
-- Оплаты по проектам: Аванс, Этап, Финал
-- Статусы: Ожидается, Получена, Отменена
-- Сводка бюджет vs оплачено vs остаток
-
-### CRM API Endpoints
-
-| Группа | Endpoints |
-|--------|-----------|
-| Клиенты | `GET/POST /api/clients`, `GET/PATCH/DELETE /api/clients/[id]` |
-| Контакты | `GET/POST /api/clients/[id]/contacts`, `PATCH/DELETE .../contacts/[contactId]` |
-| Реквизиты | `GET/POST /api/clients/[id]/bank-accounts`, `PATCH/DELETE .../bank-accounts/[accountId]` |
-| Статусы | `GET/POST /api/project-statuses`, `PATCH/DELETE /api/project-statuses/[id]` |
-| Проекты | `GET/POST /api/projects`, `GET/PATCH/DELETE /api/projects/[id]`, `PATCH .../status` |
-| Задачи | `GET/POST /api/tasks`, `GET/PATCH/DELETE /api/tasks/[id]`, `PATCH .../status` |
-| Чеклист | `GET/POST /api/tasks/[id]/checklist`, `PATCH/DELETE .../checklist/[itemId]` |
-| Время | `GET/POST /api/time-entries`, `GET/PATCH/DELETE .../[id]`, `GET .../report` |
-| Оплаты | `GET/POST /api/payments`, `GET/PATCH/DELETE /api/payments/[id]` |
-
----
-
-## API Endpoints (База знаний)
+## API Endpoints
 
 ### Статьи
 | Method | Endpoint | Описание |

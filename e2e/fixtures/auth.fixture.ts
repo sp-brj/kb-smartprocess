@@ -1,5 +1,5 @@
 import { test as base, expect } from "@playwright/test";
-import { LoginPage, DashboardPage, ArticleEditorPage, ArticleViewPage, AdminUsersPage, CrmPage } from "../pages";
+import { LoginPage, DashboardPage, ArticleEditorPage, ArticleViewPage, AdminUsersPage } from "../pages";
 
 // Test user credentials (must be created via: npx tsx scripts/seed-test-user.ts)
 export const TEST_USER_EMAIL = "e2e-test@example.com";
@@ -11,7 +11,6 @@ type AuthFixtures = {
   articleEditorPage: ArticleEditorPage;
   articleViewPage: ArticleViewPage;
   adminUsersPage: AdminUsersPage;
-  crmPage: CrmPage;
   authenticatedPage: DashboardPage;
 };
 
@@ -39,11 +38,6 @@ export const test = base.extend<AuthFixtures>({
   adminUsersPage: async ({ page }, use) => {
     const adminUsersPage = new AdminUsersPage(page);
     await use(adminUsersPage);
-  },
-
-  crmPage: async ({ page }, use) => {
-    const crmPage = new CrmPage(page);
-    await use(crmPage);
   },
 
   authenticatedPage: async ({ page, loginPage, dashboardPage }, use) => {
