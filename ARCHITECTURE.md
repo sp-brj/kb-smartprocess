@@ -6,6 +6,8 @@
 
 **Репозиторий:** https://github.com/sp-brj/kb-smartprocess
 
+> Исторически в проекте также был CRM-модуль — удалён 2026-05-26. См. [`docs/adr-001-remove-crm.md`](docs/adr-001-remove-crm.md).
+
 ---
 
 ## Технологический стек
