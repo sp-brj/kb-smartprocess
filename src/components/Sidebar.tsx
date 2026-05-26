@@ -26,6 +26,8 @@ export function Sidebar() {
   const router = useRouter();
 
   const [reloadCount, setReloadCount] = useState(0);
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +89,26 @@ export function Sidebar() {
   function startCreatingSubfolder(folderId: string) {
     setCreatingInFolderId(folderId);
     setExpandedFolders(prev => new Set(prev).add(folderId));
+  }
+
+  async function renameFolder(folderId: string, name: string, oldSlug: string) {
+    const res = await fetch(`/api/folders/${folderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setRenamingFolderId(null);
+      if (data.slug !== oldSlug && pathname === `/folders/${oldSlug}`) {
+        router.push(`/folders/${data.slug}`);
+      }
+      reloadFolders();
+    } else {
+      const err = await res.json();
+      alert(err.error || "Ошибка переименования папки");
+    }
   }
 
   async function deleteFolder(folderId: string) {
@@ -320,6 +342,11 @@ export function Sidebar() {
               getFolderDepth={getFolderDepth}
               onDeleteFolder={deleteFolder}
               getTotalArticlesCount={getTotalArticlesCount}
+              renamingFolderId={renamingFolderId}
+              renameValue={renameValue}
+              setRenamingFolderId={setRenamingFolderId}
+              setRenameValue={setRenameValue}
+              onRenameFolder={renameFolder}
             />
           ))}
         </nav>
@@ -346,6 +373,11 @@ interface FolderItemProps {
   getFolderDepth: (folder: Folder) => number;
   onDeleteFolder: (folderId: string) => Promise<void>;
   getTotalArticlesCount: (folder: Folder) => number;
+  renamingFolderId: string | null;
+  renameValue: string;
+  setRenamingFolderId: (id: string | null) => void;
+  setRenameValue: (value: string) => void;
+  onRenameFolder: (folderId: string, name: string, oldSlug: string) => Promise<void>;
 }
 
 function FolderItem({
@@ -365,6 +397,11 @@ function FolderItem({
   getFolderDepth,
   onDeleteFolder,
   getTotalArticlesCount,
+  renamingFolderId,
+  renameValue,
+  setRenamingFolderId,
+  setRenameValue,
+  onRenameFolder,
 }: FolderItemProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -435,30 +472,55 @@ function FolderItem({
             <div className="w-5" />
           )}
 
-          <Link
-            href={`/folders/${folder.slug}`}
-            className={`flex-1 flex items-center justify-between px-2 py-2 rounded text-sm ${
-              isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
-            }`}
-            data-testid={`folder-link-${folder.slug}`}
-          >
-            <span className="flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                />
-              </svg>
-              <span className="truncate">{folder.name}</span>
-            </span>
-            {getTotalArticlesCount(folder) > 0 && (
-              <span className="ml-2 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                {getTotalArticlesCount(folder)}
+          {renamingFolderId === folder.id ? (
+            <form
+              className="flex-1 flex items-center gap-1 px-2 py-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (renameValue.trim()) {
+                  onRenameFolder(folder.id, renameValue, folder.slug);
+                }
+              }}
+            >
+              <input
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                className="flex-1 px-2 py-0.5 text-sm border border-border rounded bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setRenamingFolderId(null);
+                }}
+                onBlur={() => setRenamingFolderId(null)}
+                data-testid={`rename-folder-input-${folder.slug}`}
+              />
+            </form>
+          ) : (
+            <Link
+              href={`/folders/${folder.slug}`}
+              className={`flex-1 flex items-center justify-between px-2 py-2 rounded text-sm ${
+                isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
+              }`}
+              data-testid={`folder-link-${folder.slug}`}
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                  />
+                </svg>
+                <span className="truncate">{folder.name}</span>
               </span>
-            )}
-          </Link>
+              {getTotalArticlesCount(folder) > 0 && (
+                <span className="ml-2 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {getTotalArticlesCount(folder)}
+                </span>
+              )}
+            </Link>
+          )}
 
           {/* Add subfolder button */}
           {canCreateSubfolder && (
@@ -496,6 +558,20 @@ function FolderItem({
               Добавить подпапку
             </button>
           )}
+          <button
+            onClick={() => {
+              setRenamingFolderId(folder.id);
+              setRenameValue(folder.name);
+              setContextMenu(null);
+            }}
+            className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2"
+            data-testid={`rename-folder-${folder.slug}`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Переименовать
+          </button>
           <button
             onClick={() => {
               onDeleteFolder(folder.id);
@@ -567,6 +643,11 @@ function FolderItem({
               getFolderDepth={getFolderDepth}
               onDeleteFolder={onDeleteFolder}
               getTotalArticlesCount={getTotalArticlesCount}
+              renamingFolderId={renamingFolderId}
+              renameValue={renameValue}
+              setRenamingFolderId={setRenamingFolderId}
+              setRenameValue={setRenameValue}
+              onRenameFolder={onRenameFolder}
             />
           ))}
         </div>

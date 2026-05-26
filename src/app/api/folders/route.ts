@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest, hasPermission } from "@/lib/api-auth";
+import { generateUniqueFolderSlug } from "@/lib/folders";
 
 // GET /api/folders - list all folders
 export async function GET(request: NextRequest) {
@@ -70,15 +71,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate slug from name
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-zа-яё0-9]+/gi, "-")
-      .replace(/^-|-$/g, "");
-
-    // Check if slug exists
-    const existingFolder = await prisma.folder.findUnique({ where: { slug } });
-    const finalSlug = existingFolder ? `${slug}-${Date.now()}` : slug;
+    const finalSlug = await generateUniqueFolderSlug(name);
 
     const folder = await prisma.folder.create({
       data: {

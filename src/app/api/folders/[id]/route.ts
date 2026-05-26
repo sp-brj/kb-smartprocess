@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateRequest, hasPermission } from "@/lib/api-auth";
+import { slugifyFolderName, generateUniqueFolderSlug } from "@/lib/folders";
 
 // GET /api/folders/[id]
 export async function GET(
@@ -44,9 +45,28 @@ export async function PATCH(
   try {
     const { name } = await request.json();
 
+    if (!name || !name.trim()) {
+      return NextResponse.json({ error: "Название не может быть пустым" }, { status: 400 });
+    }
+
+    const trimmedName = name.trim();
+    const newSlugBase = slugifyFolderName(trimmedName);
+    if (!newSlugBase) {
+      return NextResponse.json({ error: "Недопустимое название" }, { status: 400 });
+    }
+
+    const current = await prisma.folder.findUnique({ where: { id } });
+    if (!current) {
+      return NextResponse.json({ error: "Папка не найдена" }, { status: 404 });
+    }
+
+    const newSlug = current.name === trimmedName
+      ? current.slug
+      : await generateUniqueFolderSlug(trimmedName, id);
+
     const folder = await prisma.folder.update({
       where: { id },
-      data: { name },
+      data: { name: trimmedName, slug: newSlug },
     });
 
     return NextResponse.json(folder);
