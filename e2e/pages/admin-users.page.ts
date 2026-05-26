@@ -15,7 +15,7 @@ export class AdminUsersPage extends BasePage {
   }
 
   async goto() {
-    await super.goto("/admin/users");
+    await super.goto("/settings/users");
   }
 
   async expectOnAdminPage() {
