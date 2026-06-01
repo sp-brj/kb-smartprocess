@@ -28,6 +28,7 @@ export function Sidebar() {
   const [reloadCount, setReloadCount] = useState(0);
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [draggingFolderId, setDraggingFolderId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,6 +187,23 @@ export function Sidebar() {
           console.error("API error:", error);
           // Revert optimistic update on error
           reloadFolders();
+        }
+      } else if (data.type === "folder") {
+        if (data.id === folderId) return;
+        if (data.parentId === folderId) return;
+
+        const res = await fetch(`/api/folders/${data.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parentId: folderId }),
+        });
+
+        if (res.ok) {
+          reloadFolders();
+          router.refresh();
+        } else {
+          const err = await res.json();
+          alert(err.error || "Ошибка перемещения папки");
         }
       }
     } catch (error) {
@@ -347,6 +365,8 @@ export function Sidebar() {
               setRenamingFolderId={setRenamingFolderId}
               setRenameValue={setRenameValue}
               onRenameFolder={renameFolder}
+              draggingFolderId={draggingFolderId}
+              setDraggingFolderId={setDraggingFolderId}
             />
           ))}
         </nav>
@@ -378,6 +398,8 @@ interface FolderItemProps {
   setRenamingFolderId: (id: string | null) => void;
   setRenameValue: (value: string) => void;
   onRenameFolder: (folderId: string, name: string, oldSlug: string) => Promise<void>;
+  draggingFolderId: string | null;
+  setDraggingFolderId: (id: string | null) => void;
 }
 
 function FolderItem({
@@ -402,6 +424,8 @@ function FolderItem({
   setRenamingFolderId,
   setRenameValue,
   onRenameFolder,
+  draggingFolderId,
+  setDraggingFolderId,
 }: FolderItemProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -411,6 +435,7 @@ function FolderItem({
   const canCreateSubfolder = depth < 2; // Max 3 levels (0, 1, 2)
 
   function handleLocalDragOver(e: React.DragEvent) {
+    if (draggingFolderId === folder.id) return;
     onDragOver(e);
     setIsDragOver(true);
   }
@@ -442,17 +467,27 @@ function FolderItem({
   return (
     <div style={{ marginLeft: depth > 0 ? `${depth * 12}px` : 0 }} data-testid={`folder-item-${folder.slug}`}>
       <div
+        draggable
+        onDragStart={(e) => {
+          e.stopPropagation();
+          e.dataTransfer.setData(
+            "application/json",
+            JSON.stringify({ type: "folder", id: folder.id, parentId: folder.parentId })
+          );
+          e.dataTransfer.effectAllowed = "move";
+          setDraggingFolderId(folder.id);
+        }}
+        onDragEnd={() => setDraggingFolderId(null)}
         onDrop={handleLocalDrop}
         onDragOver={handleLocalDragOver}
         onDragLeave={handleDragLeave}
         onContextMenu={handleContextMenu}
-        className={`rounded transition-colors ${
+        className={`flex items-center group rounded transition-colors cursor-grab active:cursor-grabbing select-none ${
           isDragOver ? "bg-primary/20 ring-2 ring-primary" : ""
         }`}
         data-testid={`folder-dropzone-${folder.slug}`}
       >
-        <div className="flex items-center group">
-          {/* Expand/Collapse button */}
+        {/* Expand/Collapse button */}
           {hasChildren ? (
             <button
               onClick={() => toggleFolder(folder.id)}
@@ -498,6 +533,7 @@ function FolderItem({
           ) : (
             <Link
               href={`/folders/${folder.slug}`}
+              draggable={false}
               className={`flex-1 flex items-center justify-between px-2 py-2 rounded text-sm ${
                 isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
               }`}
@@ -535,7 +571,6 @@ function FolderItem({
               </svg>
             </button>
           )}
-        </div>
       </div>
 
       {/* Context menu */}
@@ -648,6 +683,8 @@ function FolderItem({
               setRenamingFolderId={setRenamingFolderId}
               setRenameValue={setRenameValue}
               onRenameFolder={onRenameFolder}
+              draggingFolderId={draggingFolderId}
+              setDraggingFolderId={setDraggingFolderId}
             />
           ))}
         </div>
