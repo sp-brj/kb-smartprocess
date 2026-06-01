@@ -8,7 +8,7 @@ async function getFolderDepth(folderId: string | null): Promise<number> {
   let depth = 0;
   let currentId: string | null = folderId;
   while (currentId) {
-    const folder = await prisma.folder.findUnique({
+    const folder: { parentId: string | null } | null = await prisma.folder.findUnique({
       where: { id: currentId },
       select: { parentId: true },
     });
