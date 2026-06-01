@@ -33,7 +33,7 @@ async function isDescendant(candidateId: string, ancestorId: string): Promise<bo
   let currentId: string | null = candidateId;
   while (currentId) {
     if (currentId === ancestorId) return true;
-    const folder = await prisma.folder.findUnique({
+    const folder: { parentId: string | null } | null = await prisma.folder.findUnique({
       where: { id: currentId },
       select: { parentId: true },
     });
