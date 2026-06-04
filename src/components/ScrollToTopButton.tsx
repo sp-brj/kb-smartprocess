@@ -6,16 +6,17 @@ export function ScrollToTopButton() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    const container = document.querySelector("main");
     const handleScroll = () => {
-      setIsVisible(window.scrollY > 300);
+      setIsVisible((container?.scrollTop ?? 0) > 300);
     };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    container?.addEventListener("scroll", handleScroll);
+    return () => container?.removeEventListener("scroll", handleScroll);
   }, []);
 
   const scrollToTop = () => {
-    window.scrollTo({
+    document.querySelector("main")?.scrollTo({
       top: 0,
       behavior: "smooth",
     });
