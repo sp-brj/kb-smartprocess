@@ -309,7 +309,7 @@ export function Sidebar() {
               }`}
               data-testid="all-articles-link"
             >
-              <span>Все статьи</span>
+              <span>Все статьиИ</span>
               {totalArticles > 0 && (
                 <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                   {totalArticles}
