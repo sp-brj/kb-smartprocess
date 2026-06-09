@@ -12,6 +12,7 @@ export function ScrollToTopButton() {
     };
 
     container?.addEventListener("scroll", handleScroll);
+    handleScroll();
     return () => container?.removeEventListener("scroll", handleScroll);
   }, []);
 
