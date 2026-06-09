@@ -7,13 +7,19 @@ export function ScrollToTopButton() {
 
   useEffect(() => {
     const container = document.querySelector("main");
+    console.log("ScrollToTopButton mounted, container:", container);
+
     const handleScroll = () => {
-      setIsVisible((container?.scrollTop ?? 0) > 300);
+      const scrollTop = container?.scrollTop ?? 0;
+      console.log("handleScroll called, scrollTop:", scrollTop);
+      setIsVisible(scrollTop > 300);
     };
 
-    container?.addEventListener("scroll", handleScroll);
-    handleScroll();
-    return () => container?.removeEventListener("scroll", handleScroll);
+    if (container) {
+      container.addEventListener("scroll", handleScroll);
+      handleScroll();
+      return () => container.removeEventListener("scroll", handleScroll);
+    }
   }, []);
 
   const scrollToTop = () => {
