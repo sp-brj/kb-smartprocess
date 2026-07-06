@@ -1,7 +1,10 @@
 {
-  "name": "code",
+  "name": "kb-smartprocess",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20 <23"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "bash scripts/vercel-build.sh",
