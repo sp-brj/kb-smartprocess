@@ -14,15 +14,17 @@
 
 | Слой | Технология |
 |------|------------|
-| Frontend | Next.js 15 (App Router), React 19, TypeScript |
+| Frontend | Next.js 15 (App Router), React 18, TypeScript |
 | Стили | Tailwind CSS 4, CSS Variables (темы) |
 | Backend | Next.js API Routes (Route Handlers) |
 | База данных | PostgreSQL (Supabase) |
 | ORM | Prisma 6 |
 | Аутентификация | NextAuth.js 4 (Credentials provider) |
 | Markdown | react-markdown, remark-gfm, custom remark plugins |
+| AI | OpenAI (эмбеддинги + чат по базе, pgvector) |
+| Файлы | Cloudinary (картинки, вложения) |
 | Тестирование | Playwright (E2E), Page Object Model |
-| Деплой | Vercel (предполагается) |
+| Деплой | Vercel (auto-deploy из GitHub) |
 
 ---
 
@@ -60,9 +62,8 @@ code/
 │   │   ├── ArticlesList.tsx   # Список статей с drag-drop
 │   │   ├── Sidebar.tsx        # Навигация + папки + теги
 │   │   ├── TagSelector.tsx    # Выбор тегов
-│   │   ├── TagCloud.tsx       # Облако тегов
 │   │   ├── BacklinksPanel.tsx # Обратные ссылки
-│   │   ├── HistoryButton.tsx  # Кнопка истории
+│   │   ├── ChatWidget.tsx     # AI-чат по базе знаний
 │   │   ├── VersionHistoryModal.tsx
 │   │   ├── VersionDiffViewer.tsx
 │   │   ├── WikilinkAutocomplete.tsx
@@ -133,6 +134,12 @@ code/
 | ArticleTag | Связь статья-тег (many-to-many) |
 | ArticleLink | Wiki-ссылки между статьями |
 | ArticleVersion | История изменений статей |
+| ArticleChunk | Чанки статей с эмбеддингами (pgvector) для AI-поиска |
+| ShareLink / FolderShareLink | Публичные ссылки на статью/папку (опц. пароль) |
+| Image / Attachment | Загруженные картинки и файлы (Cloudinary) |
+| ArticleView / SearchQuery | Аналитика просмотров и поисковых запросов |
+
+> Полная и актуальная схема — в [`prisma/schema.prisma`](prisma/schema.prisma).
 
 ---
 
@@ -181,9 +188,10 @@ code/
 - Визуальный diff между версиями
 - Откат к любой версии
 
-### 7. Поиск
-- Полнотекстовый поиск по заголовкам и контенту
-- PostgreSQL `ILIKE`
+### 7. Поиск и AI-чат
+- Полнотекстовый поиск по заголовкам и контенту (PostgreSQL `ILIKE`)
+- AI-чат по базе знаний: векторный поиск по эмбеддингам (pgvector) + ответ
+  через OpenAI (`/api/chat`, компонент `ChatWidget`)
 
 ### 8. Темы
 - Светлая/тёмная тема
@@ -275,9 +283,13 @@ code/
 
 ```env
 # .env.local
-DATABASE_URL="postgresql://..."
+DATABASE_URL="postgresql://..."       # Supabase (PostgreSQL + pgvector)
 NEXTAUTH_SECRET="..."
 NEXTAUTH_URL="http://localhost:3000"
+CLOUDINARY_CLOUD_NAME="..."           # загрузка картинок и вложений
+CLOUDINARY_API_KEY="..."
+CLOUDINARY_API_SECRET="..."
+OPENAI_API_KEY="..."                  # эмбеддинги и AI-чат
 ```
 
 ---

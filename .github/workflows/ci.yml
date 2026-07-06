@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    name: Lint · Types · Build
+    runs-on: ubuntu-latest
+    env:
+      # Заглушки: сборке реальные значения не нужны — миграции пропускаются
+      # (VERCEL_ENV не задан), а к БД во время build обращений нет.
+      DATABASE_URL: "postgresql://user:pass@localhost:5432/db?schema=public"
+      NEXTAUTH_SECRET: "ci-dummy-secret-not-used-at-build"
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npx next build
