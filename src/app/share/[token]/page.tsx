@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { ArticleContent } from "@/components/ArticleContent";
 import { PasswordProtectedContent } from "@/components/PasswordProtectedContent";
+import { isShareUnlocked, shareUnlockCookieName } from "@/lib/share-auth";
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -49,9 +51,23 @@ export default async function SharedArticlePage({ params }: Props) {
     );
   }
 
+  // Запароленная ссылка: контент рендерим только при валидной unlock-cookie.
+  // До этого клиенту не уходит ничего, кроме формы ввода пароля.
+  if (shareLink.password) {
+    const cookieStore = await cookies();
+    const unlocked = isShareUnlocked(
+      cookieStore.get(shareUnlockCookieName("article", token))?.value,
+      token,
+      shareLink.password
+    );
+    if (!unlocked) {
+      return <PasswordProtectedContent token={token} type="article" />;
+    }
+  }
+
   const article = shareLink.article;
 
-  const content = (
+  return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto py-8 px-4">
         <div className="bg-card rounded-lg shadow-sm border border-border p-8">
@@ -93,14 +109,4 @@ export default async function SharedArticlePage({ params }: Props) {
       </div>
     </div>
   );
-
-  if (shareLink.password) {
-    return (
-      <PasswordProtectedContent token={token} type="article">
-        {content}
-      </PasswordProtectedContent>
-    );
-  }
-
-  return content;
 }

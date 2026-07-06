@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import {
+  shareUnlockCookieName,
+  shareUnlockValue,
+  shareUnlockCookieOptions,
+} from "@/lib/share-auth";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 interface RouteParams {
   params: Promise<{ token: string }>;
@@ -8,6 +14,19 @@ interface RouteParams {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const { token } = await params;
+
+  // Анти-брутфорс пароля ссылки: лимит на пару token+IP.
+  const rl = rateLimit(
+    `share-verify:${token}:${clientIp(request.headers)}`,
+    10,
+    5 * 60 * 1000
+  );
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many attempts" },
+      { status: 429 }
+    );
+  }
 
   const shareLink = await prisma.shareLink.findUnique({
     where: { token },
@@ -35,7 +54,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
-    return NextResponse.json({ success: true });
+    const res = NextResponse.json({ success: true });
+    res.cookies.set(
+      shareUnlockCookieName("article", token),
+      shareUnlockValue(token, shareLink.password),
+      shareUnlockCookieOptions()
+    );
+    return res;
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }

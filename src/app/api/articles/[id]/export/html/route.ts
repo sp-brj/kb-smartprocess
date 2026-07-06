@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { marked } from "marked";
+import { sanitizeMarkdownHtml } from "@/lib/sanitize";
 
 export async function GET(
   request: NextRequest,
@@ -28,8 +29,8 @@ export async function GET(
     return NextResponse.json({ error: "Статья не найдена" }, { status: 404 });
   }
 
-  // Преобразуем Markdown в HTML
-  const contentHtml = await marked(article.content);
+  // Преобразуем Markdown в HTML и санитизируем (marked не чистит HTML сам).
+  const contentHtml = sanitizeMarkdownHtml(await marked(article.content));
 
   // Создаем полный HTML документ
   const html = `<!DOCTYPE html>

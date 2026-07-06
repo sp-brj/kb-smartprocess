@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/api-auth";
 import { embedText } from "@/lib/embedding";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 import OpenAI from "openai";
 
 interface ChatMessage {
@@ -41,6 +42,19 @@ export async function POST(request: NextRequest) {
   const auth = await authenticateRequest(request);
   if (!auth.authenticated) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Лимит на дорогие запросы к OpenAI (защита от денежного DoS).
+  const rl = rateLimit(
+    `chat:${auth.userId ?? clientIp(request.headers)}`,
+    20,
+    60 * 1000
+  );
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Слишком много запросов. Подождите немного." },
+      { status: 429 }
+    );
   }
 
   let body: ChatRequestBody;
