@@ -119,6 +119,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Image not found" }, { status: 404 });
     }
 
+    // Удалять может только загрузивший или ADMIN (иначе IDOR — удаление чужого).
+    if (image.uploadedBy !== auth.userId && auth.userRole !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     // Удаляем из Cloudinary
     await cloudinary.uploader.destroy(image.publicId);
 

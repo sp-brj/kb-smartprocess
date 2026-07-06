@@ -150,6 +150,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Attachment not found" }, { status: 404 });
     }
 
+    // Удалять может только загрузивший или ADMIN (иначе IDOR — удаление чужого).
+    if (attachment.uploadedBy !== session.user.id && session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     // Удаляем из Cloudinary
     await cloudinary.uploader.destroy(attachment.publicId, { resource_type: "raw" });
 
