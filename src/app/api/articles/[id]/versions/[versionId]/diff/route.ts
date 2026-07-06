@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authenticateRequest, hasPermission } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { diffLines } from "diff";
 
@@ -9,8 +8,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; versionId: string }> }
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const auth = await authenticateRequest(request);
+  if (!auth.authenticated || !hasPermission(auth, "read")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
