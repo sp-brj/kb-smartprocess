@@ -68,12 +68,29 @@ export async function authenticateRequest(
       authenticated: true,
       userId: session.user.id,
       userRole: session.user.role,
-      permissions: ["read", "write", "admin"], // Полный доступ для сессии
+      permissions: permissionsForRole(session.user.role),
       authMethod: "session",
     };
   }
 
   return { authenticated: false, authMethod: "none" };
+}
+
+/**
+ * Права по роли для веб-сессии.
+ * Раньше любой залогиненный получал ["read","write","admin"], из-за чего READER
+ * мог писать, а EDITOR — считаться admin. Теперь права соответствуют роли.
+ */
+function permissionsForRole(role?: string): Permission[] {
+  switch (role) {
+    case "ADMIN":
+      return ["read", "write", "admin"];
+    case "EDITOR":
+      return ["read", "write"];
+    default:
+      // READER и любая неизвестная роль — только чтение
+      return ["read"];
+  }
 }
 
 /**

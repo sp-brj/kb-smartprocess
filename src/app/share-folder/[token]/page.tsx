@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { PasswordProtectedContent } from "@/components/PasswordProtectedContent";
+import { isShareUnlocked, shareUnlockCookieName } from "@/lib/share-auth";
 
 interface Props {
   params: Promise<{ token: string }>;
@@ -70,9 +72,23 @@ export default async function SharedFolderPage({ params }: Props) {
     );
   }
 
+  // Запароленная папка: листинг (и ссылки на статьи внутри) отдаём только
+  // при валидной unlock-cookie. Иначе — форма пароля без какого-либо контента.
+  if (shareLink.password) {
+    const cookieStore = await cookies();
+    const unlocked = isShareUnlocked(
+      cookieStore.get(shareUnlockCookieName("folder", token))?.value,
+      token,
+      shareLink.password
+    );
+    if (!unlocked) {
+      return <PasswordProtectedContent token={token} type="folder" />;
+    }
+  }
+
   const folder = shareLink.folder;
 
-  const content = (
+  return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto py-8 px-4">
         <div className="bg-card rounded-lg shadow-sm border border-border p-8">
@@ -172,14 +188,4 @@ export default async function SharedFolderPage({ params }: Props) {
       </div>
     </div>
   );
-
-  if (shareLink.password) {
-    return (
-      <PasswordProtectedContent token={token} type="folder">
-        {content}
-      </PasswordProtectedContent>
-    );
-  }
-
-  return content;
 }

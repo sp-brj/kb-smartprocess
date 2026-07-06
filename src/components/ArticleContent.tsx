@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
 import Link from "next/link";
@@ -14,6 +15,18 @@ interface Props {
   content: string;
   articleId?: string;
 }
+
+// Схема санитизации: базовая github-схема + атрибуты, нужные нашим wiki-ссылкам.
+// rehypeRaw парсит сырой HTML из markdown, поэтому без sanitize здесь был бы XSS
+// (особенно на публичных /share-страницах). rehypeHighlight идёт ПОСЛЕ sanitize —
+// его классы подсветки доверенные и не режутся.
+const sanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    a: [...(defaultSchema.attributes?.a ?? []), "className", "data-wikilink"],
+  },
+};
 
 export function ArticleContent({ content: initialContent, articleId }: Props) {
   const [content, setContent] = useState(initialContent);
@@ -133,7 +146,7 @@ export function ArticleContent({ content: initialContent, articleId }: Props) {
     <div className="prose dark:prose-invert max-w-none">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkWikilinks]}
-        rehypePlugins={[rehypeRaw, rehypeHighlight]}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema], rehypeHighlight]}
         components={markdownComponents}
       >
         {content}

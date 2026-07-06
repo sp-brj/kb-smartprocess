@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { ArticleContent } from "@/components/ArticleContent";
+import { PasswordProtectedContent } from "@/components/PasswordProtectedContent";
+import { isShareUnlocked, shareUnlockCookieName } from "@/lib/share-auth";
 
 interface Props {
   params: Promise<{ token: string; slug: string }>;
@@ -48,6 +51,20 @@ export default async function SharedFolderArticlePage({ params }: Props) {
         </div>
       </div>
     );
+  }
+
+  // Пароль на папке защищает и статьи внутри неё: без валидной unlock-cookie
+  // показываем форму пароля, а не содержимое статьи.
+  if (shareLink.password) {
+    const cookieStore = await cookies();
+    const unlocked = isShareUnlocked(
+      cookieStore.get(shareUnlockCookieName("folder", token))?.value,
+      token,
+      shareLink.password
+    );
+    if (!unlocked) {
+      return <PasswordProtectedContent token={token} type="folder" />;
+    }
   }
 
   // Находим статью и проверяем что она в этой папке

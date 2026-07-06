@@ -16,8 +16,9 @@ test.describe("Authentication - Login", () => {
   test("should show error for invalid credentials", async ({ loginPage }) => {
     await loginPage.goto();
     await loginPage.login("nonexistent@example.com", "wrongpassword");
-    // Error message is in Russian
-    await loginPage.expectError("не найден");
+    // Единое сообщение для «нет юзера» и «неверный пароль» — намеренно,
+    // чтобы нельзя было перечислять существующие email по тексту ошибки.
+    await loginPage.expectError("Неверный email или пароль");
   });
 
   test("should redirect /register to login", async ({ page, loginPage }) => {

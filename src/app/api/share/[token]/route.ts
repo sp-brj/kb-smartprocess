@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isShareUnlocked, shareUnlockCookieName } from "@/lib/share-auth";
 
 interface RouteParams {
   params: Promise<{ token: string }>;
@@ -36,6 +37,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   if (shareLink.expiresAt && shareLink.expiresAt < new Date()) {
     return NextResponse.json({ error: "Link has expired" }, { status: 410 });
+  }
+
+  // Запароленная ссылка: контент только при валидной unlock-cookie (её ставит
+  // POST /verify). Без неё — 401, даже если токен известен.
+  if (shareLink.password) {
+    const unlocked = isShareUnlocked(
+      request.cookies.get(shareUnlockCookieName("article", token))?.value,
+      token,
+      shareLink.password
+    );
+    if (!unlocked) {
+      return NextResponse.json(
+        { error: "Password required" },
+        { status: 401 }
+      );
+    }
   }
 
   return NextResponse.json(shareLink.article);

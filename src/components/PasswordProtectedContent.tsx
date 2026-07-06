@@ -1,16 +1,23 @@
 "use client";
 
-import { useState, ReactNode } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Props {
   token: string;
   type: "article" | "folder";
-  children: ReactNode;
 }
 
-export function PasswordProtectedContent({ token, type, children }: Props) {
+/**
+ * Форма-гейт для запароленной share-ссылки.
+ *
+ * Контент сюда НЕ передаётся — сервер его не рендерит, пока нет валидной
+ * unlock-cookie. При верном пароле /verify ставит cookie, а router.refresh()
+ * заставляет server-компонент перерендериться и отдать контент.
+ */
+export function PasswordProtectedContent({ token, type }: Props) {
+  const router = useRouter();
   const [password, setPassword] = useState("");
-  const [isUnlocked, setIsUnlocked] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -19,26 +26,31 @@ export function PasswordProtectedContent({ token, type, children }: Props) {
     setError("");
     setIsLoading(true);
 
-    const endpoint = type === "article"
-      ? `/api/share/${token}/verify`
-      : `/api/share-folder/${token}/verify`;
+    const endpoint =
+      type === "article"
+        ? `/api/share/${token}/verify`
+        : `/api/share-folder/${token}/verify`;
 
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
 
-    if (res.ok) {
-      setIsUnlocked(true);
-    } else {
-      setError("Неверный пароль");
+      if (res.ok) {
+        router.refresh();
+      } else if (res.status === 429) {
+        setError("Слишком много попыток. Подождите немного.");
+        setIsLoading(false);
+      } else {
+        setError("Неверный пароль");
+        setIsLoading(false);
+      }
+    } catch {
+      setError("Ошибка соединения. Попробуйте ещё раз.");
+      setIsLoading(false);
     }
-    setIsLoading(false);
-  }
-
-  if (isUnlocked) {
-    return <>{children}</>;
   }
 
   return (

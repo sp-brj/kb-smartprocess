@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { marked } from "marked";
+import { sanitizeMarkdownHtml } from "@/lib/sanitize";
 
 // PDF генерация на сервере требует puppeteer или подобную библиотеку
 // Для простоты возвращаем HTML оптимизированный для печати в PDF
@@ -32,8 +33,8 @@ export async function GET(
     return NextResponse.json({ error: "Статья не найдена" }, { status: 404 });
   }
 
-  // Преобразуем Markdown в HTML
-  const contentHtml = await marked(article.content);
+  // Преобразуем Markdown в HTML и санитизируем (marked не чистит HTML сам).
+  const contentHtml = sanitizeMarkdownHtml(await marked(article.content));
 
   // Создаем HTML документ оптимизированный для PDF
   const html = `<!DOCTYPE html>
