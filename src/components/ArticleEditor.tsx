@@ -79,6 +79,7 @@ export function ArticleEditor({ article }: Props) {
   const [selectedTags, setSelectedTags] = useState<Tag[]>(article?.tags || []);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [viewMode, setViewMode] = useState<"editor" | "preview" | "split">("editor");
   const [autocomplete, setAutocomplete] = useState<AutocompleteState | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -107,10 +108,15 @@ export function ArticleEditor({ article }: Props) {
     if (!article) {
       const saved = localStorage.getItem("article-draft");
       if (saved) {
-        const draft = JSON.parse(saved);
-        setTitle(draft.title || "");
-        setContent(draft.content || "");
-        setFolderId(draft.folderId || "");
+        try {
+          const draft = JSON.parse(saved);
+          setTitle(draft.title || "");
+          setContent(draft.content || "");
+          setFolderId(draft.folderId || "");
+        } catch {
+          // Повреждённый черновик не должен ронять редактор — чистим его.
+          localStorage.removeItem("article-draft");
+        }
       }
     }
   }, [article]);
@@ -615,6 +621,7 @@ export function ArticleEditor({ article }: Props) {
     if (!title.trim()) return;
 
     setSaving(true);
+    setSaveError("");
     try {
       const url = article ? `/api/articles/${article.id}` : "/api/articles";
       const method = article ? "PATCH" : "POST";
@@ -645,7 +652,14 @@ export function ArticleEditor({ article }: Props) {
         localStorage.removeItem("article-draft");
         router.push(`/articles/${data.slug}`);
         router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setSaveError(
+          data.error || "Не удалось сохранить статью. Попробуйте ещё раз."
+        );
       }
+    } catch {
+      setSaveError("Ошибка соединения. Проверьте сеть и попробуйте снова.");
     } finally {
       setSaving(false);
     }
@@ -1142,6 +1156,15 @@ export function ArticleEditor({ article }: Props) {
           </>
         )}
       </div>
+
+      {saveError && (
+        <div
+          className="mt-4 px-4 py-3 rounded bg-destructive/20 border border-destructive/30 text-destructive text-sm"
+          data-testid="article-save-error"
+        >
+          {saveError}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center justify-between pt-4 border-t border-border">
