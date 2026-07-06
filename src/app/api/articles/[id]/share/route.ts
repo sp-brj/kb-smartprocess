@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authenticateRequest, hasPermission } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
@@ -10,9 +9,9 @@ interface RouteParams {
 
 // GET - получить все ссылки для статьи
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
+  const auth = await authenticateRequest(request);
 
-  if (!session) {
+  if (!auth.authenticated || !hasPermission(auth, "read")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -35,9 +34,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // POST - создать новую ссылку
 export async function POST(request: NextRequest, { params }: RouteParams) {
-  const session = await getServerSession(authOptions);
+  const auth = await authenticateRequest(request);
 
-  if (!session) {
+  if (!auth.authenticated || !hasPermission(auth, "write")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

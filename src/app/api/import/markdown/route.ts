@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authenticateRequest, hasPermission } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import matter from "gray-matter";
 import { generateSlug } from "@/lib/wikilinks";
@@ -17,9 +16,9 @@ function convertWikilinks(content: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const auth = await authenticateRequest(request);
 
-  if (!session?.user?.id) {
+  if (!auth.authenticated || !hasPermission(auth, "write")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -64,7 +63,7 @@ export async function POST(request: NextRequest) {
         slug: finalSlug,
         status: frontmatter.status === "published" ? "PUBLISHED" : "DRAFT",
         folderId: folderId || null,
-        authorId: session.user.id,
+        authorId: auth.userId!,
       },
     });
 
