@@ -16,7 +16,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { token } = await params;
 
   // Анти-брутфорс пароля ссылки: лимит на пару token+IP.
-  const rl = rateLimit(
+  const rl = await rateLimit(
     `share-verify:${token}:${clientIp(request.headers)}`,
     10,
     5 * 60 * 1000

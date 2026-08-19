@@ -25,7 +25,7 @@ export const authOptions: NextAuthOptions = {
 
         // Базовый анти-брутфорс: лимит попыток на пару email+IP.
         const ip = clientIp(req?.headers ?? {});
-        const rl = rateLimit(
+        const rl = await rateLimit(
           `login:${credentials.email}:${ip}`,
           10,
           5 * 60 * 1000
