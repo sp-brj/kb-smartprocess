@@ -29,6 +29,8 @@ model User {
   articleViews    ArticleView[]
   searchQueries   SearchQuery[]
   apiKeys         ApiKey[]
+  shareLinks       ShareLink[]
+  folderShareLinks FolderShareLink[]
 }
 
 model ApiKey {
@@ -124,25 +126,33 @@ model ArticleChunk {
 // =====================
 
 model ShareLink {
-  id        String    @id @default(cuid())
-  token     String    @unique @default(cuid())
-  articleId String
-  article   Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  isActive  Boolean   @default(true)
-  expiresAt DateTime?
-  password  String?
-  createdAt DateTime  @default(now())
+  id          String    @id @default(cuid())
+  token       String    @unique @default(cuid())
+  articleId   String
+  article     Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  password    String?
+  createdById String?
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@index([createdById])
 }
 
 model FolderShareLink {
-  id        String    @id @default(cuid())
-  token     String    @unique @default(cuid())
-  folderId  String
-  folder    Folder    @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  isActive  Boolean   @default(true)
-  expiresAt DateTime?
-  password  String?
-  createdAt DateTime  @default(now())
+  id          String    @id @default(cuid())
+  token       String    @unique @default(cuid())
+  folderId    String
+  folder      Folder    @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  password    String?
+  createdById String?
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@index([createdById])
 }
 
 // =====================
