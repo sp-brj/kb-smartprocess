@@ -11,6 +11,7 @@ Next.js 15 (App Router) + Prisma 6 + Supabase Postgres (pgvector) + NextAuth 4 +
 npm run dev                                    # dev-сервер (localhost:3000)
 npm run build                                  # scripts/vercel-build.sh: prisma generate + next build
 npx prisma migrate dev                         # локальные миграции (build локально их НЕ применяет)
+npm run test:unit                              # vitest, юнит-тесты (tests/unit/)
 npx playwright test --project=chromium         # E2E локально (webServer поднимется сам)
 BASE_URL=https://kb-smartprocess.vercel.app npx playwright test   # E2E на прод (1 worker, sequential)
 npm run test:cleanup                           # ОБЯЗАТЕЛЬНО после прогона — чистит тестовые данные
@@ -23,6 +24,7 @@ npm run test:cleanup                           # ОБЯЗАТЕЛЬНО посл
 - `src/components/` — React-компоненты (плоский список)
 - `prisma/schema.prisma` — User, ApiKey, Folder, Article(+Chunk/Link/Tag/Version/View), ShareLink, FolderShareLink, Tag, Image, Attachment, SearchQuery
 - `e2e/` — Playwright POM: `pages/` (Page Objects), `fixtures/` (auth/data), `specs/` (по категориям)
+- `tests/unit/` — vitest по чистой логике `src/lib/` (алиас `@/` настроен в `vitest.config.mts`)
 - `mcp/` — отдельный Python MCP-агент (Docker — запускать только на DevVM, не на Mac)
 
 ## Деплой и специфика
@@ -41,6 +43,6 @@ npm run test:cleanup                           # ОБЯЗАТЕЛЬНО посл
 
 ## Перед коммитом
 
-1. `npm run build` → PASS
+1. `npm run build` и `npm run test:unit` → PASS
 2. `npx playwright test --project=chromium` → PASS, затем `npm run test:cleanup`
 3. Спросить разрешение на push (push = деплой на прод)
