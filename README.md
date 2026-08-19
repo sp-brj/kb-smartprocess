@@ -102,6 +102,6 @@ Push в `main` → Vercel автоматически собирает и деп�
 ## Документация
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — архитектура, схема БД, API endpoints
-- [docs/](docs/) — ADR-решения (удаление CRM, аналитики), дизайн AI-настроек
+- [docs/](docs/) — ADR-решения (удаление CRM, аналитики), дизайн AI-настроек, [аудит и техдолг](docs/audit-2026-07-06.md)
 - [BACKLOG-MCP-API.md](BACKLOG-MCP-API.md) — дорожная карта MCP-сервера и API
 - Репозиторий: https://github.com/sp-brj/kb-smartprocess
