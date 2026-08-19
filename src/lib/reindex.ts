@@ -70,30 +70,46 @@ export async function reindexArticle(articleId: string): Promise<void> {
   const texts = chunks.map((c) => c.content);
   const embeddings = await embedTexts(texts);
 
-  // 7. DELETE old chunks
-  await prisma.$executeRawUnsafe(
-    `DELETE FROM "ArticleChunk" WHERE "articleId" = $1`,
-    articleId
-  );
+  // 7-8. Перезапись чанков одной транзакцией: DELETE + пакетные INSERT.
+  // Раньше был отдельный INSERT на каждый чанк (N+1 круговых обходов БД), а
+  // падение посреди цикла оставляло статью с частичным индексом.
+  const COLUMNS = 7;
+  const ROWS_PER_STATEMENT = 100; // держим число плейсхолдеров далеко от лимита PG
 
-  // 8. INSERT new chunks with vector
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    const embeddingStr = `[${embeddings[i].join(",")}]`;
-    const id = crypto.randomUUID();
+  const statements = [
+    prisma.$executeRawUnsafe(
+      `DELETE FROM "ArticleChunk" WHERE "articleId" = $1`,
+      articleId
+    ),
+  ];
 
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO "ArticleChunk" (id, "articleId", content, "headingPath", "chunkIndex", "contentHash", embedding, "createdAt")
-       VALUES ($1, $2, $3, $4, $5, $6, $7::vector, NOW())`,
-      id,
-      articleId,
-      chunk.content,
-      chunk.headingPath,
-      chunk.chunkIndex,
-      contentHash,
-      embeddingStr
+  for (let offset = 0; offset < chunks.length; offset += ROWS_PER_STATEMENT) {
+    const batch = chunks.slice(offset, offset + ROWS_PER_STATEMENT);
+    const values: unknown[] = [];
+    const rows = batch.map((chunk, i) => {
+      const base = i * COLUMNS;
+      values.push(
+        crypto.randomUUID(),
+        articleId,
+        chunk.content,
+        chunk.headingPath,
+        chunk.chunkIndex,
+        contentHash,
+        `[${embeddings[offset + i].join(",")}]`
+      );
+      return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}::vector, NOW())`;
+    });
+
+    statements.push(
+      prisma.$executeRawUnsafe(
+        `INSERT INTO "ArticleChunk" (id, "articleId", content, "headingPath", "chunkIndex", "contentHash", embedding, "createdAt")
+         VALUES ${rows.join(", ")}`,
+        ...values
+      )
     );
   }
+
+  await prisma.$transaction(statements);
 }
 
 /**
