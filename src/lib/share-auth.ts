@@ -64,3 +64,18 @@ export function shareUnlockCookieOptions() {
     maxAge: 60 * 60 * 8,
   };
 }
+
+/**
+ * Кто вправе отозвать share-ссылку.
+ *
+ * Раньше любой залогиненный деактивировал любую ссылку. Теперь — только её
+ * создатель или ADMIN. Legacy-ссылки без владельца (`createdById === null`,
+ * остались у ссылок на папки до миграции 20260819120000) отзывает только ADMIN.
+ */
+export function canRevokeShareLink(
+  auth: { userId?: string; userRole?: string },
+  link: { createdById: string | null }
+): boolean {
+  if (auth.userRole === "ADMIN") return true;
+  return !!link.createdById && link.createdById === auth.userId;
+}

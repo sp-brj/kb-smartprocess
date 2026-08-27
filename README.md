@@ -11,7 +11,7 @@ PostgreSQL (Supabase).
 - **БД:** PostgreSQL (Supabase) + pgvector, Prisma 6
 - **AI:** OpenAI (эмбеддинги + чат по базе знаний)
 - **Файлы:** Cloudinary (картинки и вложения)
-- **Тесты:** Playwright (E2E, Page Object Model)
+- **Тесты:** vitest (юнит) + Playwright (E2E, Page Object Model)
 - **Деплой:** Vercel (auto-deploy из GitHub)
 
 ## Возможности
@@ -55,14 +55,19 @@ npm run dev          # dev-сервер
 npm run build        # прод-сборка (на Vercel также применяет миграции)
 npm run start        # прод-сервер
 npm run lint         # ESLint
+npm run test:unit    # vitest, юнит-тесты
 npm run test:e2e     # Playwright E2E
 npm run test:cleanup # удалить тестовые данные после прогона
 ```
 
-## Тесты (Playwright)
+## Тесты
 
-`testDir` — `e2e/specs/`, паттерн Page Object Model (`e2e/pages/`, `e2e/fixtures/`).
-Всего 33 теста в 11 файлах:
+**Юнит (vitest)** — `tests/unit/`, чистая логика из `src/lib/`: slug и wiki-ссылки, санитизация
+HTML, подпись unlock-cookie и правила отзыва share-ссылок, пагинация, rate limit, чанкование.
+Запуск: `npm run test:unit` (гоняется и в CI).
+
+**E2E (Playwright)** — `testDir` `e2e/specs/`, паттерн Page Object Model
+(`e2e/pages/`, `e2e/fixtures/`). 35 тестов в 12 файлах:
 
 ```
 e2e/specs/
@@ -102,6 +107,6 @@ Push в `main` → Vercel автоматически собирает и деп�
 ## Документация
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — архитектура, схема БД, API endpoints
-- [docs/](docs/) — ADR-решения (удаление CRM, аналитики), дизайн AI-настроек
+- [docs/](docs/) — ADR-решения (удаление CRM, аналитики), дизайн AI-настроек, [аудит и техдолг](docs/audit-2026-07-06.md)
 - [BACKLOG-MCP-API.md](BACKLOG-MCP-API.md) — дорожная карта MCP-сервера и API
 - Репозиторий: https://github.com/sp-brj/kb-smartprocess

@@ -7,7 +7,7 @@ on:
 
 jobs:
   quality:
-    name: Lint · Types · Build
+    name: Lint · Types · Tests · Build
     runs-on: ubuntu-latest
     env:
       # Заглушки: сборке реальные значения не нужны — миграции пропускаются
@@ -32,6 +32,9 @@ jobs:
 
       - name: Typecheck
         run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm run test:unit
 
       - name: Build
         run: npx next build

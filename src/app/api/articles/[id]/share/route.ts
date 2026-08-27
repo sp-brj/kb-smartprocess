@@ -80,6 +80,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       articleId: id,
       expiresAt,
       password,
+      createdById: auth.userId,
     },
   });
 

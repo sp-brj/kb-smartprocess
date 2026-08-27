@@ -10,6 +10,54 @@ KB_URL = os.environ.get("KB_URL", "https://kb.smartprocess.ru").rstrip("/")
 KB_API_KEY = os.environ["KB_API_KEY"]
 KB_KEY_PREFIX = KB_API_KEY[:8]
 
+# Проверка TLS включена. Отключать только осознанно (самоподписанный сертификат
+# в dev-контуре): раньше здесь стояло verify=False во всех клиентах, что
+# открывало MITM на пути к боевому KB вместе с API-ключом.
+KB_TLS_VERIFY = os.environ.get("KB_TLS_VERIFY", "true").strip().lower() not in (
+    "0",
+    "false",
+    "no",
+)
+
+CONNECT_TIMEOUT = float(os.environ.get("KB_CONNECT_TIMEOUT", "5"))
+READ_TIMEOUT = float(os.environ.get("KB_READ_TIMEOUT", "30"))
+MAX_RETRIES = int(os.environ.get("KB_MAX_RETRIES", "3"))
+RETRY_BACKOFF = float(os.environ.get("KB_RETRY_BACKOFF", "0.5"))
+
+# Один общий клиент на весь процесс: пул соединений вместо нового TCP+TLS
+# handshake на каждый вызов инструмента (прежнее поведение и роняло транспорт
+# под нагрузкой).
+_client: httpx.AsyncClient | None = None
+
+RETRIABLE_STATUS = {429, 502, 503, 504}
+
+
+async def _get_client() -> httpx.AsyncClient:
+    # Конструктор синхронный, точек await внутри нет — гонки между корутинами
+    # здесь не возникает, блокировка не нужна (и не пережила бы смену loop'а).
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.AsyncClient(
+            base_url=KB_URL,
+            verify=KB_TLS_VERIFY,
+            timeout=httpx.Timeout(
+                connect=CONNECT_TIMEOUT,
+                read=READ_TIMEOUT,
+                write=READ_TIMEOUT,
+                pool=CONNECT_TIMEOUT,
+            ),
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            follow_redirects=True,
+        )
+    return _client
+
+
+async def _aclose_client() -> None:
+    global _client
+    if _client is not None and not _client.is_closed:
+        await _client.aclose()
+    _client = None
+
 mcp = FastMCP("kb-smartprocess", port=int(os.environ.get("MCP_PORT", "8014")), host="0.0.0.0")
 
 
@@ -33,25 +81,67 @@ def _enrich_list(items):
     return items
 
 
+async def _request(
+    method: str,
+    path: str,
+    *,
+    params: dict | None = None,
+    json: dict | None = None,
+):
+    """Запрос к KB с ретраями и внятной ошибкой вместо падения транспорта.
+
+    Повторяем только то, что безопасно повторять: GET — на сетевых сбоях и
+    временных 5xx/429; POST и PATCH — исключительно на ConnectError/ConnectTimeout,
+    когда запрос заведомо не дошёл до сервера (иначе можно создать дубль статьи).
+    """
+    client = await _get_client()
+    idempotent = method.upper() == "GET"
+    last_error: Exception | None = None
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            r = await client.request(
+                method, path, headers=_headers(), params=params, json=json
+            )
+        except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+            last_error = e  # соединение не установлено — повтор безопасен всегда
+        except (httpx.ReadTimeout, httpx.WriteTimeout, httpx.RemoteProtocolError) as e:
+            if not idempotent:
+                raise RuntimeError(
+                    f"{method} {path}: обрыв связи с KB ({type(e).__name__}). "
+                    "Запрос мог быть применён — повтор не выполняется, проверьте состояние вручную."
+                ) from e
+            last_error = e
+        else:
+            if r.status_code in RETRIABLE_STATUS and attempt < MAX_RETRIES - 1:
+                last_error = RuntimeError(f"HTTP {r.status_code}")
+            elif r.is_error:
+                raise RuntimeError(
+                    f"{method} {path}: KB вернул HTTP {r.status_code}: {r.text[:300]}"
+                )
+            else:
+                return r.json() if r.content else None
+
+        if attempt < MAX_RETRIES - 1:
+            await asyncio.sleep(RETRY_BACKOFF * (2**attempt))
+
+    raise RuntimeError(f"{method} {path}: KB недоступен после {MAX_RETRIES} попыток: {last_error}")
+
+
 async def _get(path: str, params: dict | None = None):
-    async with httpx.AsyncClient(verify=False, timeout=30) as c:
-        r = await c.get(f"{KB_URL}{path}", headers=_headers(), params=params)
-        r.raise_for_status()
-        return r.json()
+    return await _request("GET", path, params=params)
 
 
 async def _post(path: str, json: dict) -> dict:
-    async with httpx.AsyncClient(verify=False, timeout=30) as c:
-        r = await c.post(f"{KB_URL}{path}", headers=_headers(), json=json)
-        r.raise_for_status()
-        return r.json()
+    return await _request("POST", path, json=json)
 
 
 async def _patch(path: str, json: dict) -> dict:
-    async with httpx.AsyncClient(verify=False, timeout=30) as c:
-        r = await c.patch(f"{KB_URL}{path}", headers=_headers(), json=json)
-        r.raise_for_status()
-        return r.json()
+    return await _request("PATCH", path, json=json)
+
+
+async def _put(path: str, json: dict) -> dict:
+    return await _request("PUT", path, json=json)
 
 
 @mcp.tool()
@@ -64,11 +154,11 @@ async def whoami() -> dict:
     status = "unknown"
     detail = None
     try:
-        async with httpx.AsyncClient(verify=False, timeout=10) as c:
-            r = await c.get(f"{KB_URL}/api/folders", headers=_headers())
-            status = "ok" if r.status_code == 200 else f"http_{r.status_code}"
-            if r.status_code != 200:
-                detail = r.text[:200]
+        client = await _get_client()
+        r = await client.get("/api/folders", headers=_headers())
+        status = "ok" if r.status_code == 200 else f"http_{r.status_code}"
+        if r.status_code != 200:
+            detail = r.text[:200]
     except Exception as e:
         status = "error"
         detail = str(e)[:200]
@@ -108,6 +198,10 @@ async def list_articles(
         params["folderId"] = folder_id
     if status:
         params["status"] = status
+    # Клиентские фильтры (author_email/tag) применяются уже после ответа, поэтому
+    # сузить выборку на сервере можно только когда их нет.
+    if limit and limit > 0 and not author_email and not tag:
+        params["limit"] = limit
     items = await _get("/api/articles", params)
 
     if author_email:
@@ -199,10 +293,18 @@ async def list_tags() -> list:
     return await _get("/api/tags")
 
 
+async def _add_tags(article_id: str, tag_ids: list[str]) -> list:
+    # POST /tags принимает один tagId за раз, поэтому добавление — через PUT
+    # (полная замена): читаем текущие теги, объединяем и записываем всё разом.
+    current = await _get(f"/api/articles/{article_id}/tags")
+    merged = sorted({t["id"] for t in (current or [])} | set(tag_ids))
+    return await _put(f"/api/articles/{article_id}/tags", {"tagIds": merged})
+
+
 @mcp.tool()
-async def add_tags_to_article(article_id: str, tag_ids: list[str]) -> dict:
-    """Добавить теги к статье (по их ID)."""
-    return await _post(f"/api/articles/{article_id}/tags", {"tagIds": tag_ids})
+async def add_tags_to_article(article_id: str, tag_ids: list[str]) -> list:
+    """Добавить теги к статье (по их ID). Существующие теги сохраняются."""
+    return await _add_tags(article_id, tag_ids)
 
 
 ARCHIVE_TAG_NAME = "archived"
@@ -230,7 +332,7 @@ async def archive_article(article_id: str) -> dict:
     """
     tag_id = await _ensure_archive_tag_id()
     article = await _patch(f"/api/articles/{article_id}", {"status": "DRAFT"})
-    await _post(f"/api/articles/{article_id}/tags", {"tagIds": [tag_id]})
+    await _add_tags(article_id, [tag_id])
     return {
         "archived": True,
         "article_id": article_id,
@@ -242,11 +344,14 @@ async def archive_article(article_id: str) -> dict:
 async def _startup_check() -> None:
     """Fail-fast: проверяем что ключ валиден, иначе не поднимаемся."""
     try:
-        async with httpx.AsyncClient(verify=False, timeout=10) as c:
-            r = await c.get(f"{KB_URL}/api/folders", headers=_headers())
+        client = await _get_client()
+        r = await client.get("/api/folders", headers=_headers())
     except Exception as e:
         print(f"[kb-mcp] STARTUP CHECK FAILED: cannot reach {KB_URL}: {e}", file=sys.stderr)
         sys.exit(1)
+    finally:
+        # У проверки свой event loop; клиент сервера создастся заново в loop'е mcp.run().
+        await _aclose_client()
     if r.status_code in (401, 403):
         print(
             f"[kb-mcp] STARTUP CHECK FAILED: KB_API_KEY ({KB_KEY_PREFIX}***) is invalid for {KB_URL} (HTTP {r.status_code}).",
@@ -260,9 +365,16 @@ async def _startup_check() -> None:
             file=sys.stderr,
         )
         return
-    print(f"[kb-mcp] startup OK: {KB_URL} reachable, key {KB_KEY_PREFIX}*** authorised.", file=sys.stderr)
+    print(
+        f"[kb-mcp] startup OK: {KB_URL} reachable, key {KB_KEY_PREFIX}*** authorised, "
+        f"tls_verify={KB_TLS_VERIFY}.",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":
     asyncio.run(_startup_check())
-    mcp.run(transport="streamable-http")
+    try:
+        mcp.run(transport="streamable-http")
+    finally:
+        asyncio.run(_aclose_client())

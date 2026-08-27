@@ -54,7 +54,10 @@ export function PasswordProtectedContent({ token, type }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
+    <div
+      className="min-h-screen bg-background flex items-center justify-center"
+      data-testid="share-gate"
+    >
       <div className="bg-card rounded-lg shadow-sm border border-border p-8 w-full max-w-sm">
         <div className="text-center mb-6">
           <svg
@@ -85,15 +88,19 @@ export function PasswordProtectedContent({ token, type }: Props) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Пароль"
+              data-testid="share-gate-password"
               className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               autoFocus
             />
             {error && (
-              <p className="mt-2 text-sm text-destructive">{error}</p>
+              <p className="mt-2 text-sm text-destructive" data-testid="share-gate-error">
+                {error}
+              </p>
             )}
           </div>
           <button
             type="submit"
+            data-testid="share-gate-submit"
             disabled={isLoading || !password}
             className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-accent disabled:opacity-50"
           >

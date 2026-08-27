@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(BASE_URL=https://kb-smartprocess.vercel.app npx playwright test:*)",
+      "Bash(BASE_URL=http://localhost:3001 npx playwright test:*)",
+      "Bash(git -C /Users/mb/Developer/sp-kb log --oneline --graph)",
+      "Bash(git -C /Users/mb/Developer/sp-kb status --short)",
+      "mcp__playwright__*"
+    ]
+  }
+}

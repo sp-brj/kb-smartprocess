@@ -4,6 +4,7 @@ import { generateSlug } from "@/lib/wikilinks";
 import { createArticleLinks, linkOrphanedReferences } from "@/lib/wikilinks-db";
 import { authenticateRequest, hasPermission } from "@/lib/api-auth";
 import { reindexArticle } from "@/lib/reindex";
+import { parseListRange } from "@/lib/pagination";
 
 // GET /api/articles - list articles
 export async function GET(request: NextRequest) {
@@ -17,6 +18,11 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get("status");
   const noFolder = searchParams.get("noFolder");
 
+  // Пагинация: раньше список тянул ВСЕ статьи целиком вместе с полным content.
+  // Теперь — окно (по умолчанию 100, максимум 500) и без тела статьи;
+  // content отдаёт GET /api/articles/[id].
+  const { take, skip } = parseListRange(searchParams);
+
   const where: Record<string, unknown> = {};
   if (noFolder === "true") {
     where.folderId = null;
@@ -25,17 +31,29 @@ export async function GET(request: NextRequest) {
   }
   if (status) where.status = status;
 
-  const articles = await prisma.article.findMany({
-    where,
-    include: {
-      author: { select: { id: true, name: true, email: true } },
-      folder: { select: { id: true, name: true, slug: true } },
-      tags: {
-        include: { tag: true },
+  const [total, articles] = await Promise.all([
+    prisma.article.count({ where }),
+    prisma.article.findMany({
+      where,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        status: true,
+        publishedAt: true,
+        folderId: true,
+        authorId: true,
+        createdAt: true,
+        updatedAt: true,
+        author: { select: { id: true, name: true, email: true } },
+        folder: { select: { id: true, name: true, slug: true } },
+        tags: { include: { tag: true } },
       },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
+      orderBy: { updatedAt: "desc" },
+      take,
+      skip,
+    }),
+  ]);
 
   // Преобразуем теги для удобства фронтенда
   const articlesWithTags = articles.map((article) => ({
@@ -43,7 +61,15 @@ export async function GET(request: NextRequest) {
     tags: article.tags.map((at) => at.tag),
   }));
 
-  return NextResponse.json(articlesWithTags);
+  // Тело ответа остаётся массивом (совместимость с MCP и внешними клиентами),
+  // счётчики — в заголовках.
+  return NextResponse.json(articlesWithTags, {
+    headers: {
+      "X-Total-Count": String(total),
+      "X-Limit": String(take),
+      "X-Offset": String(skip),
+    },
+  });
 }
 
 // POST /api/articles - create article

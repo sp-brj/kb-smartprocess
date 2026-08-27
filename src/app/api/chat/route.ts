@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Лимит на дорогие запросы к OpenAI (защита от денежного DoS).
-  const rl = rateLimit(
+  const rl = await rateLimit(
     `chat:${auth.userId ?? clientIp(request.headers)}`,
     20,
     60 * 1000

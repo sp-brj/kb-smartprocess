@@ -72,6 +72,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       folderId: id,
       expiresAt,
       password,
+      createdById: auth.userId,
     },
   });
 
