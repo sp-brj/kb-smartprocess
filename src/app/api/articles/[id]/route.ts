@@ -139,7 +139,14 @@ export async function PATCH(
     return NextResponse.json(articleWithTags);
   } catch (error) {
     console.error("Update article error:", error);
-    return NextResponse.json({ error: "Ошибка обновления статьи" }, { status: 500 });
+    const detail = error instanceof Error ? error.message : String(error);
+    if (detail === "Статья не найдена") {
+      return NextResponse.json({ error: detail }, { status: 404 });
+    }
+    return NextResponse.json(
+      { error: "Ошибка обновления статьи", detail },
+      { status: 500 }
+    );
   }
 }
 
@@ -166,6 +173,10 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Delete article error:", error);
-    return NextResponse.json({ error: "Ошибка удаления статьи" }, { status: 500 });
+    const detail = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { error: "Ошибка удаления статьи", detail },
+      { status: 500 }
+    );
   }
 }

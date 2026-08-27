@@ -140,6 +140,10 @@ async def _patch(path: str, json: dict) -> dict:
     return await _request("PATCH", path, json=json)
 
 
+async def _put(path: str, json: dict) -> dict:
+    return await _request("PUT", path, json=json)
+
+
 @mcp.tool()
 async def whoami() -> dict:
     """Информация о текущем подключении к KB: какой ключ, URL, доступен ли API.
@@ -289,10 +293,18 @@ async def list_tags() -> list:
     return await _get("/api/tags")
 
 
+async def _add_tags(article_id: str, tag_ids: list[str]) -> list:
+    # POST /tags принимает один tagId за раз, поэтому добавление — через PUT
+    # (полная замена): читаем текущие теги, объединяем и записываем всё разом.
+    current = await _get(f"/api/articles/{article_id}/tags")
+    merged = sorted({t["id"] for t in (current or [])} | set(tag_ids))
+    return await _put(f"/api/articles/{article_id}/tags", {"tagIds": merged})
+
+
 @mcp.tool()
-async def add_tags_to_article(article_id: str, tag_ids: list[str]) -> dict:
-    """Добавить теги к статье (по их ID)."""
-    return await _post(f"/api/articles/{article_id}/tags", {"tagIds": tag_ids})
+async def add_tags_to_article(article_id: str, tag_ids: list[str]) -> list:
+    """Добавить теги к статье (по их ID). Существующие теги сохраняются."""
+    return await _add_tags(article_id, tag_ids)
 
 
 ARCHIVE_TAG_NAME = "archived"
@@ -320,7 +332,7 @@ async def archive_article(article_id: str) -> dict:
     """
     tag_id = await _ensure_archive_tag_id()
     article = await _patch(f"/api/articles/{article_id}", {"status": "DRAFT"})
-    await _post(f"/api/articles/{article_id}/tags", {"tagIds": [tag_id]})
+    await _add_tags(article_id, [tag_id])
     return {
         "archived": True,
         "article_id": article_id,
