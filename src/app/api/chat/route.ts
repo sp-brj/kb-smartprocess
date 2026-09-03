@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/api-auth";
-import { embedText } from "@/lib/embedding";
-import { prisma } from "@/lib/prisma";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { DEFAULT_MAX_DISTANCE, searchChunks, type ChunkHit } from "@/lib/vector-search";
 import OpenAI from "openai";
 
 interface ChatMessage {
@@ -13,15 +12,6 @@ interface ChatMessage {
 interface ChatRequestBody {
   message: string;
   history?: ChatMessage[];
-}
-
-interface ChunkResult {
-  content: string;
-  headingPath: string | null;
-  id: string;
-  title: string;
-  slug: string;
-  distance: number;
 }
 
 interface SourceArticle {
@@ -36,7 +26,8 @@ const SYSTEM_PROMPT = `Ты — ассистент базы знаний SmartPr
 В конце ответа укажи источники: названия статей со ссылками.
 Отвечай на русском языке, кратко и по делу.`;
 
-const MAX_DISTANCE = 0.6;
+/** Сколько последних реплик истории передаём модели (защита от раздувания контекста). */
+const MAX_HISTORY = 10;
 
 export async function POST(request: NextRequest) {
   const auth = await authenticateRequest(request);
@@ -76,42 +67,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Embed user question
-  let embedding: number[];
+  // Эмбеддинг вопроса + векторный поиск (общий модуль с /api/search/semantic)
+  let relevantChunks: ChunkHit[];
   try {
-    embedding = await embedText(message);
-  } catch (error) {
-    console.error("Embedding error:", error);
-    return NextResponse.json(
-      { error: "Сервис эмбеддингов недоступен" },
-      { status: 503 }
-    );
-  }
-
-  // Vector search for relevant chunks
-  const vectorString = `[${embedding.join(",")}]`;
-
-  let chunks: ChunkResult[];
-  try {
-    chunks = await prisma.$queryRawUnsafe<ChunkResult[]>(
-      `SELECT ac.content, ac."headingPath", a.id, a.title, a.slug,
-              ac.embedding <=> $1::vector AS distance
-       FROM "ArticleChunk" ac
-       JOIN "Article" a ON ac."articleId" = a.id
-       ORDER BY ac.embedding <=> $1::vector
-       LIMIT 5`,
-      vectorString
-    );
+    relevantChunks = await searchChunks(message, {
+      limit: 5,
+      maxDistance: DEFAULT_MAX_DISTANCE,
+    });
   } catch (error) {
     console.error("Vector search error:", error);
     return NextResponse.json(
-      { error: "Ошибка поиска по базе знаний" },
-      { status: 500 }
+      { error: "Поиск по базе знаний недоступен" },
+      { status: 503 }
     );
   }
-
-  // Filter by distance threshold
-  const relevantChunks = chunks.filter((c) => c.distance <= MAX_DISTANCE);
 
   // Build context from chunks
   const contextText = relevantChunks
@@ -147,7 +116,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (history && Array.isArray(history)) {
-    for (const msg of history) {
+    for (const msg of history.slice(-MAX_HISTORY)) {
       if (msg.role === "user" || msg.role === "assistant") {
         messages.push({
           role: msg.role,

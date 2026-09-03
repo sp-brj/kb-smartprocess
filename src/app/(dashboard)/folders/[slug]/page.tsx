@@ -32,7 +32,14 @@ export default async function FolderPage({ params }: PageProps) {
     where: { slug: decodedSlug },
     include: {
       articles: {
-        include: {
+        // select без content: страница папки не должна тянуть тела статей
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          status: true,
+          updatedAt: true,
+          folderId: true,
           author: { select: { name: true, email: true } },
           folder: { select: { id: true, name: true, slug: true } },
         },

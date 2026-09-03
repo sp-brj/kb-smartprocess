@@ -11,9 +11,16 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const noFolder = params.noFolder === "true";
 
+  // select без content: список не должен тянуть тела всех статей
   const articles = await prisma.article.findMany({
     where: noFolder ? { folderId: null } : undefined,
-    include: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      status: true,
+      updatedAt: true,
+      folderId: true,
       author: { select: { name: true, email: true } },
       folder: { select: { id: true, name: true, slug: true } },
     },
