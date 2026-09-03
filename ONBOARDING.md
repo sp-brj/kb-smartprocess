@@ -75,7 +75,7 @@ npm run dev
 Это базовый контекст, без него код будет «не в стиле проекта»:
 
 1. **`ARCHITECTURE.md`** — что за приложение, БД, API, структура
-2. **`.claude/CLAUDE.md`** — правила работы с этим проектом (читает Claude Code сам, но и ты тоже прочитай)
+2. **`CLAUDE.md`** (в корне) и `docs/claude-details.md` — правила работы с этим проектом (читает Claude Code сам, но и ты тоже прочитай)
 3. **`README.md`** — команды
 4. **`prisma/schema.prisma`** — модели БД
 
@@ -93,6 +93,7 @@ npm run dev
 
 # Перед коммитом — ОБЯЗАТЕЛЬНО
 npm run build                                  # сборка должна пройти
+npm run test:unit                              # юнит-тесты (vitest)
 npx playwright test --project=chromium         # E2E на chromium
 npx tsx scripts/cleanup-test-data.ts           # очистка тестовых данных
 
@@ -115,7 +116,7 @@ git push origin feat/название-задачи
 
 ## 6. Claude Code в этом проекте
 
-Claude Code сам прочитает `.claude/CLAUDE.md` при старте — там описаны правила (auth checklist, ESLint quirks, паттерны компонентов, что делать после задачи).
+Claude Code сам прочитает `CLAUDE.md` из корня при старте — там команды, карта проекта и грабли; детали (auth checklist, ESLint quirks, паттерны компонентов) — в `docs/claude-details.md`.
 
 Полезные команды/скиллы:
 - `/init` — если когда-то понадобится пересоздать CLAUDE.md
@@ -142,7 +143,6 @@ Claude Code сам прочитает `.claude/CLAUDE.md` при старте �
 - ❌ Не править production-данные в Supabase напрямую через SQL без бэкапа
 - ❌ Не пушить в `main` массивные изменения без preview-деплоя
 - ❌ Не использовать общие API-ключи Anthropic — заведи свой
-- ❌ Не отключай pre-commit хуки через `--no-verify`
 
 ---
 
