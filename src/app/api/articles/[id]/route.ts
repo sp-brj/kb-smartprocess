@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { syncArticleLinks } from "@/lib/wikilinks-db";
 import { authenticateRequest, hasPermission } from "@/lib/api-auth";
-import { reindexArticle, deleteArticleChunks } from "@/lib/reindex";
+import { deleteArticleChunks } from "@/lib/reindex";
+import {
+  ARTICLE_INCLUDE,
+  ArticleNotFoundError,
+  updateArticle,
+  withFlatTags,
+  type UpdateArticlePatch,
+} from "@/lib/article-write";
 
 // GET /api/articles/[id]
 export async function GET(
@@ -21,24 +27,14 @@ export async function GET(
     where: {
       OR: [{ id }, { slug: id }],
     },
-    include: {
-      author: { select: { id: true, name: true, email: true } },
-      folder: { select: { id: true, name: true, slug: true } },
-      tags: { include: { tag: true } },
-    },
+    include: ARTICLE_INCLUDE,
   });
 
   if (!article) {
     return NextResponse.json({ error: "Статья не найдена" }, { status: 404 });
   }
 
-  // Преобразуем теги
-  const articleWithTags = {
-    ...article,
-    tags: article.tags.map((at) => at.tag),
-  };
-
-  return NextResponse.json(articleWithTags);
+  return NextResponse.json(withFlatTags(article));
 }
 
 // PATCH /api/articles/[id]
@@ -55,94 +51,27 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const { title, content, folderId, status } = body;
+    const { title, content, folderId, status, minor } = body;
 
-    // Транзакция: обновляем статью + создаем версию
-    const article = await prisma.$transaction(async (tx) => {
-      // Получаем текущую статью
-      const currentArticle = await tx.article.findUnique({
-        where: { id },
-      });
+    const patch: UpdateArticlePatch = {};
+    if (typeof title === "string") patch.title = title;
+    if (typeof content === "string") patch.content = content;
+    if (folderId !== undefined) patch.folderId = folderId || null;
+    if (status === "DRAFT" || status === "PUBLISHED") patch.status = status;
 
-      if (!currentArticle) {
-        throw new Error("Статья не найдена");
-      }
-
-      // Проверяем, есть ли реальные изменения в контенте/заголовке/статусе
-      const hasVersionableChanges =
-        (title !== undefined && title !== currentArticle.title) ||
-        (content !== undefined && content !== currentArticle.content) ||
-        (status !== undefined && status !== currentArticle.status);
-
-      // Создаем новую версию только если есть изменения
-      if (hasVersionableChanges) {
-        const lastVersion = await tx.articleVersion.findFirst({
-          where: { articleId: id },
-          orderBy: { version: "desc" },
-        });
-
-        await tx.articleVersion.create({
-          data: {
-            version: (lastVersion?.version || 0) + 1,
-            title: title ?? currentArticle.title,
-            content: content ?? currentArticle.content,
-            status: status ?? currentArticle.status,
-            changeType: "UPDATE",
-            articleId: id,
-            authorId: auth.userId!,
-          },
-        });
-      }
-
-      // Обновляем статью
-      const data: Record<string, unknown> = {};
-      if (title !== undefined) data.title = title;
-      if (content !== undefined) data.content = content;
-      if (folderId !== undefined) data.folderId = folderId || null;
-      if (status !== undefined) {
-        data.status = status;
-        // Устанавливаем дату публикации при первой публикации
-        if (status === "PUBLISHED" && currentArticle.status === "DRAFT" && !currentArticle.publishedAt) {
-          data.publishedAt = new Date();
-        }
-      }
-
-      const updatedArticle = await tx.article.update({
-        where: { id },
-        data,
-        include: {
-          author: { select: { id: true, name: true, email: true } },
-          folder: { select: { id: true, name: true, slug: true } },
-          tags: { include: { tag: true } },
-        },
-      });
-
-      return updatedArticle;
+    const article = await updateArticle(id, patch, {
+      authorId: auth.userId!,
+      // minor: true — мелкая правка (чекбокс в тексте): без версии и reindex
+      minor: minor === true,
     });
 
-    // Обновляем wiki-ссылки если изменился контент
-    if (content !== undefined) {
-      await syncArticleLinks(id, content);
-    }
-
-    // Преобразуем теги
-    const articleWithTags = {
-      ...article,
-      tags: article.tags.map((at) => at.tag),
-    };
-
-    // Fire-and-forget reindex (don't await, don't block response)
-    reindexArticle(id).catch((err) =>
-      console.error("Reindex error:", err)
-    );
-
-    return NextResponse.json(articleWithTags);
+    return NextResponse.json(article);
   } catch (error) {
+    if (error instanceof ArticleNotFoundError) {
+      return NextResponse.json({ error: error.message }, { status: 404 });
+    }
     console.error("Update article error:", error);
     const detail = error instanceof Error ? error.message : String(error);
-    if (detail === "Статья не найдена") {
-      return NextResponse.json({ error: detail }, { status: 404 });
-    }
     return NextResponse.json(
       { error: "Ошибка обновления статьи", detail },
       { status: 500 }

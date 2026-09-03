@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, after } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -38,15 +38,19 @@ export async function authenticateRequest(
     });
 
     if (apiKey && (await bcrypt.compare(token, apiKey.key))) {
-      // Обновить lastUsedAt асинхронно (не блокируем ответ)
-      prisma.apiKey
-        .update({
-          where: { id: apiKey.id },
-          data: { lastUsedAt: new Date() },
-        })
-        .catch(() => {
-          // Игнорируем ошибки обновления lastUsedAt
-        });
+      // Обновить lastUsedAt после ответа. Без after() на Vercel такой
+      // «fire-and-forget» мог не выполниться: функция замораживается сразу
+      // после отправки ответа.
+      after(() =>
+        prisma.apiKey
+          .update({
+            where: { id: apiKey.id },
+            data: { lastUsedAt: new Date() },
+          })
+          .catch(() => {
+            // Игнорируем ошибки обновления lastUsedAt
+          })
+      );
 
       return {
         authenticated: true,

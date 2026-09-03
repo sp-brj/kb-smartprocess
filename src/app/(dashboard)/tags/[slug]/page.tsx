@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { formatDateRu } from "@/lib/date-utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
@@ -83,7 +84,7 @@ export default async function TagPage({ params }: Props) {
                       )}
                       <span>{article.author.name || article.author.email}</span>
                       <span>
-                        {new Date(article.updatedAt).toLocaleDateString("ru-RU")}
+                        {formatDateRu(article.updatedAt)}
                       </span>
                     </div>
                     {article.tags.length > 0 && (

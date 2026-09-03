@@ -172,8 +172,12 @@ async def whoami() -> dict:
 
 @mcp.tool()
 async def list_folders() -> list:
-    """Список всех папок базы знаний (рекурсивно, до 3 уровней вложенности)."""
-    return await _get("/api/folders")
+    """Дерево папок базы знаний: корневые папки с вложенными children (до 3 уровней).
+
+    tree=1 — только корни; без него API отдаёт плоский список, где каждая
+    подпапка приходила дважды (и как корень, и внутри родителя).
+    """
+    return await _get("/api/folders", {"tree": "1"})
 
 
 @mcp.tool()
@@ -184,37 +188,30 @@ async def list_articles(
     tag: str | None = None,
     limit: int | None = None,
 ) -> list:
-    """Список статей.
+    """Список статей (без тела; тело — get_article). Сортировка: updatedAt desc.
+
+    Все фильтры применяются на сервере. Раньше tag/author_email фильтровались
+    на стороне MCP поверх первой страницы (100 статей) и молча теряли остальное.
 
     Args:
         folder_id: ID папки (если задан — только статьи в этой папке)
         status: DRAFT / PUBLISHED
-        author_email: фильтр по email автора (клиент-сайд)
-        tag: фильтр по имени или slug тега (клиент-сайд)
-        limit: ограничить количество результатов (клиент-сайд, статьи сортированы по updatedAt desc)
+        author_email: email автора
+        tag: имя или slug тега
+        limit: максимум результатов (по умолчанию 100, максимум 500)
     """
     params = {}
     if folder_id:
         params["folderId"] = folder_id
     if status:
         params["status"] = status
-    # Клиентские фильтры (author_email/tag) применяются уже после ответа, поэтому
-    # сузить выборку на сервере можно только когда их нет.
-    if limit and limit > 0 and not author_email and not tag:
-        params["limit"] = limit
-    items = await _get("/api/articles", params)
-
     if author_email:
-        items = [a for a in items if (a.get("author") or {}).get("email") == author_email]
+        params["author"] = author_email
     if tag:
-        t = tag.lower()
-        items = [
-            a for a in items
-            if any((x.get("name", "").lower() == t or x.get("slug", "").lower() == t) for x in (a.get("tags") or []))
-        ]
+        params["tag"] = tag
     if limit and limit > 0:
-        items = items[:limit]
-    return _enrich_list(items)
+        params["limit"] = limit
+    return _enrich_list(await _get("/api/articles", params))
 
 
 @mcp.tool()
@@ -242,16 +239,22 @@ async def create_article(title: str, content: str, folder_id: str | None = None,
 @mcp.tool()
 async def update_article(article_id: str, title: str | None = None, content: str | None = None,
                           folder_id: str | None = None, status: str | None = None) -> dict:
-    """Обновить существующую статью."""
+    """Обновить существующую статью.
+
+    Передавать только то, что меняется. folder_id="" — убрать статью из папки
+    (в корень); content="" — очистить текст. None (не передано) = не трогать.
+    """
     data = {}
-    if title:
+    if title is not None:
         data["title"] = title
-    if content:
+    if content is not None:
         data["content"] = content
-    if folder_id:
-        data["folderId"] = folder_id
-    if status:
+    if folder_id is not None:
+        data["folderId"] = folder_id or None
+    if status is not None:
         data["status"] = status
+    if not data:
+        raise RuntimeError("update_article: нечего обновлять — не передано ни одного поля")
     return _enrich_article(await _patch(f"/api/articles/{article_id}", data))
 
 
@@ -263,27 +266,26 @@ async def search_articles(
     status: str | None = None,
     limit: int | None = None,
 ) -> list:
-    """Полнотекстовый поиск по базе знаний.
+    """Полнотекстовый поиск по заголовку и тексту (ILIKE), фильтры на сервере.
 
     Args:
-        query: поисковая фраза
-        author_email: фильтр по email автора (клиент-сайд)
-        tag: фильтр по имени или slug тега (клиент-сайд, требует доп. запроса для тегов — пока не доступен в search API)
-        status: DRAFT / PUBLISHED (клиент-сайд)
-        limit: ограничить количество результатов
+        query: поисковая фраза (минимум 2 символа)
+        author_email: email автора
+        tag: имя или slug тега
+        status: DRAFT / PUBLISHED
+        limit: максимум результатов (по умолчанию 20, максимум 100)
     """
-    resp = await _get("/api/search", {"q": query})
-    items = resp.get("articles", []) if isinstance(resp, dict) else resp
+    params = {"q": query}
     if author_email:
-        items = [a for a in items if (a.get("author") or {}).get("email") == author_email]
-    if status:
-        items = [a for a in items if a.get("status") == status]
+        params["author"] = author_email
     if tag:
-        # search-эндпоинт не возвращает теги, фильтр по тегу здесь работать не будет
-        # оставлено для совместимости интерфейса с list_articles
-        pass
+        params["tag"] = tag
+    if status:
+        params["status"] = status
     if limit and limit > 0:
-        items = items[:limit]
+        params["limit"] = limit
+    resp = await _get("/api/search", params)
+    items = resp.get("articles", []) if isinstance(resp, dict) else resp
     return _enrich_list(items)
 
 

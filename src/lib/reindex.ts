@@ -13,8 +13,21 @@ function sha256(content: string): string {
 }
 
 /**
+ * Хеш «что проиндексировано». Включает заголовок и имя папки, потому что они
+ * входят в контекст каждого чанка ([Папка > Статья > H2]): раньше хеш считался
+ * только по content, и перенос статьи в другую папку индекс не обновлял.
+ */
+export function articleContentHash(article: {
+  title: string;
+  folderName?: string | null;
+  content: string;
+}): string {
+  return sha256(`${article.title}\n${article.folderName ?? ""}\n${article.content}`);
+}
+
+/**
  * Reindex a single article's chunks for AI chat search.
- * Runs asynchronously — does not block the caller.
+ * Вызывается из article-write.ts через after() после ответа роута.
  */
 export async function reindexArticle(articleId: string): Promise<void> {
   // 1. Fetch article with folder
@@ -40,8 +53,12 @@ export async function reindexArticle(articleId: string): Promise<void> {
     return;
   }
 
-  // 2. Compute SHA256 of content
-  const contentHash = sha256(article.content || "");
+  // 2. Хеш контента + заголовка + папки
+  const contentHash = articleContentHash({
+    title: article.title,
+    folderName: article.folder?.name,
+    content: article.content || "",
+  });
 
   // 3. Check if hash changed (query existing chunks' contentHash)
   const existing = await prisma.$queryRawUnsafe<Array<{ contentHash: string }>>(

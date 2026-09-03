@@ -10,7 +10,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // ?tree=1 — только корневые папки с вложенными children (MCP, деревья).
+  // Без параметра — плоский список ВСЕХ папок, у каждой свои children: так
+  // работают сайдбар (строит дерево сам) и выпадающий список в редакторе.
+  // Для MCP плоский формат давал каждую подпапку дважды (BUG-5 бэклога).
+  const treeOnly = new URL(request.url).searchParams.get("tree") === "1";
+
   const folders = await prisma.folder.findMany({
+    where: treeOnly ? { parentId: null } : undefined,
     include: {
       children: {
         include: {

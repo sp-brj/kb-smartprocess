@@ -95,7 +95,7 @@ export function ResizableSidebar() {
     <>
       {/* Sidebar wrapper with transform animation (like ChatGPT) */}
       <div
-        className="relative flex-shrink-0 h-screen transition-transform duration-200 ease-out"
+        className="sticky top-0 flex-shrink-0 h-screen transition-transform duration-200 ease-out"
         style={{
           width: width,
           transform: isCollapsed ? `translateX(-${width}px)` : "translateX(0)",

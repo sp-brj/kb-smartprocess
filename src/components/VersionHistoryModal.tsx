@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useEscapeKey } from "@/lib/use-escape-key";
 import { VersionDiffViewer } from "./VersionDiffViewer";
 
 interface Version {
@@ -30,6 +31,7 @@ export function VersionHistoryModal({ articleId, onClose, onRevert }: Props) {
   const [loading, setLoading] = useState(true);
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
   const [reverting, setReverting] = useState(false);
+  useEscapeKey(true, onClose);
 
   useEffect(() => {
     async function fetchVersions() {
