@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { v2 as cloudinary } from "cloudinary";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { authenticateRequest, hasPermission } from "@/lib/api-auth";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -52,9 +51,11 @@ function configureCloudinary() {
 
 export async function POST(request: NextRequest) {
   configureCloudinary();
-  const session = await getServerSession(authOptions);
+  // Как и /api/upload: сессия ИЛИ API-ключ с правом write (раньше вложения
+  // нельзя было загрузить из MCP — роут сидел на getServerSession).
+  const auth = await authenticateRequest(request);
 
-  if (!session?.user?.id) {
+  if (!auth.authenticated || !hasPermission(auth, "write")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
         filesize: file.size,
         mimetype: file.type,
         articleId: articleId || null,
-        uploadedBy: session.user.id,
+        uploadedBy: auth.userId!,
       },
     });
 
@@ -128,9 +129,11 @@ export async function POST(request: NextRequest) {
 // DELETE - удаление вложения
 export async function DELETE(request: NextRequest) {
   configureCloudinary();
-  const session = await getServerSession(authOptions);
+  // Как и /api/upload: сессия ИЛИ API-ключ с правом write (раньше вложения
+  // нельзя было загрузить из MCP — роут сидел на getServerSession).
+  const auth = await authenticateRequest(request);
 
-  if (!session?.user?.id) {
+  if (!auth.authenticated || !hasPermission(auth, "write")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -151,7 +154,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Удалять может только загрузивший или ADMIN (иначе IDOR — удаление чужого).
-    if (attachment.uploadedBy !== session.user.id && session.user.role !== "ADMIN") {
+    if (attachment.uploadedBy !== auth.userId && auth.userRole !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

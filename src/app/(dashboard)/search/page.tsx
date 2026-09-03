@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { makeSnippet } from "@/lib/snippet";
+import { formatDateRu } from "@/lib/date-utils";
 import Link from "next/link";
 
 interface Props {
@@ -37,19 +39,7 @@ export default async function SearchPage({ searchParams }: Props) {
   }
 
   function getSnippet(content: string, searchQuery: string): string {
-    const lowerContent = content.toLowerCase();
-    const lowerQuery = searchQuery.toLowerCase();
-    const pos = lowerContent.indexOf(lowerQuery);
-
-    if (pos !== -1) {
-      const start = Math.max(0, pos - 80);
-      const end = Math.min(content.length, pos + searchQuery.length + 120);
-      return (start > 0 ? "..." : "") +
-             content.slice(start, end) +
-             (end < content.length ? "..." : "");
-    }
-
-    return content.slice(0, 200) + (content.length > 200 ? "..." : "");
+    return makeSnippet(content, searchQuery, { before: 80, after: 120, fallback: 200 });
   }
 
   function highlightText(text: string, searchQuery: string): React.ReactNode {
@@ -116,7 +106,7 @@ export default async function SearchPage({ searchParams }: Props) {
                       </span>
                     )}
                     <span>
-                      {new Date(article.updatedAt).toLocaleDateString("ru-RU")}
+                      {formatDateRu(article.updatedAt)}
                     </span>
                   </div>
                   <p className="mt-2 text-muted-foreground text-sm">

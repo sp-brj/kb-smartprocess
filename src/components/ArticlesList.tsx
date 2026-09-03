@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDateRu } from "@/lib/date-utils";
 import { useRouter } from "next/navigation";
 
 interface Article {
@@ -93,7 +94,7 @@ export function ArticlesList({ initialArticles }: ArticlesListProps) {
                     )}
                     <span>{article.author.name || article.author.email}</span>
                     <span>
-                      {new Date(article.updatedAt).toLocaleDateString("ru-RU")}
+                      {formatDateRu(article.updatedAt)}
                     </span>
                   </div>
                 </div>

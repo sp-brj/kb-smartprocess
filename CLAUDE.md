@@ -20,7 +20,7 @@ npm run test:cleanup                           # ОБЯЗАТЕЛЬНО посл
 ## Карта
 
 - `src/app/` — страницы (App Router: `(auth)`, `(dashboard)`, `share*`) + `api/` route handlers
-- `src/lib/` — ядро: `api-auth.ts` (`authenticateRequest()` — единый вход авторизации API), `auth.ts`, `embedding.ts`/`chunking.ts` (RAG)
+- `src/lib/` — ядро: `api-auth.ts` (`authenticateRequest()` — единый вход авторизации API), `article-write.ts` (`createArticle()`/`updateArticle()` — единственный путь записи статьи: версия + wiki-ссылки + reindex через `after()`), `auth.ts`, `embedding.ts`/`chunking.ts`/`reindex.ts` (RAG), `snippet.ts`, `slugs.ts`, `date-utils.ts` (даты только через `formatDateRu`, пояс Europe/Moscow)
 - `src/components/` — React-компоненты (плоский список)
 - `prisma/schema.prisma` — User, ApiKey, Folder, Article(+Chunk/Link/Tag/Version/View), ShareLink, FolderShareLink, Tag, Image, Attachment, SearchQuery
 - `e2e/` — Playwright POM: `pages/` (Page Objects), `fixtures/` (auth/data), `specs/` (по категориям)

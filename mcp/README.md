@@ -9,12 +9,12 @@
 | Tool                  | Что делает                                                  |
 |-----------------------|-------------------------------------------------------------|
 | `whoami`              | Prefix ключа + живой health-check `/api/folders`            |
-| `list_folders`        | Папки KB (рекурсивно)                                       |
-| `list_articles`       | Статьи + фильтры: `folder_id`, `status`, `author_email`, `tag`, `limit` |
+| `list_folders`        | Дерево папок (корни с вложенными children)                                       |
+| `list_articles`       | Статьи + фильтры на сервере: `folder_id`, `status`, `author_email`, `tag`, `limit` |
 | `get_article`         | Статья по `id` или `slug`                                   |
 | `create_article`      | Создать (Markdown)                                          |
-| `update_article`      | Обновить (title / content / folder / status)                |
-| `search_articles`     | Полнотекстовый поиск + те же фильтры + `limit`              |
+| `update_article`      | Обновить (title / content / folder / status); `folder_id=""` — в корень                |
+| `search_articles`     | Полнотекстовый поиск + те же фильтры (на сервере) + `limit`              |
 | `list_tags`           | Все теги                                                    |
 | `add_tags_to_article` | Прикрепить теги к статье                                    |
 | `archive_article`     | Soft-delete: `DRAFT` + тег `archived`. Хард-delete — нет.   |

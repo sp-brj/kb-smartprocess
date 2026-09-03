@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useEscapeKey } from "@/lib/use-escape-key";
 
 /**
  * Управление публичными ссылками — общая реализация для статей и папок.
@@ -73,6 +74,7 @@ export function ShareLinkManager({ kind, ownerId }: Props) {
   const config = KINDS[kind];
 
   const [isOpen, setIsOpen] = useState(false);
+  useEscapeKey(isOpen, () => setIsOpen(false));
   const [links, setLinks] = useState<ShareLink[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -187,8 +189,15 @@ export function ShareLinkManager({ kind, ownerId }: Props) {
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-lg shadow-xl w-full max-w-md mx-4" data-testid="share-modal">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setIsOpen(false)}
+        >
+          <div
+            className="bg-card rounded-lg shadow-xl w-full max-w-md mx-4"
+            data-testid="share-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h3 className="text-lg font-semibold text-foreground">{config.modalTitle}</h3>
               <button

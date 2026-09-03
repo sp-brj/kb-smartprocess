@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, hasPermission } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { ArticleNotFoundError, updateArticle } from "@/lib/article-write";
 
 // POST /api/articles/[id]/versions/[versionId]/revert - откатить статью к указанной версии
 export async function POST(
@@ -24,58 +25,32 @@ export async function POST(
   }
 
   try {
-    // Транзакция: создаем новую версию + обновляем статью
-    const result = await prisma.$transaction(async (tx) => {
-      // Получаем текущую статью
-      const article = await tx.article.findUnique({
-        where: { id },
-      });
-
-      if (!article) {
-        throw new Error("Статья не найдена");
+    // Откат — обычная запись через единый сервис: версия REVERT, wiki-ссылки
+    // и индекс AI-чата пересобираются (раньше откат их не трогал).
+    const article = await updateArticle(
+      id,
+      {
+        title: targetVersion.title,
+        content: targetVersion.content,
+        status: targetVersion.status,
+      },
+      {
+        authorId: auth.userId!,
+        changeType: "REVERT",
+        changeSummary: `Откат к версии ${targetVersion.version}`,
       }
+    );
 
-      // Находим последнюю версию для номера
-      const lastVersion = await tx.articleVersion.findFirst({
-        where: { articleId: id },
-        orderBy: { version: "desc" },
-      });
-
-      const newVersionNumber = (lastVersion?.version || 0) + 1;
-
-      // Создаем новую версию (REVERT)
-      const newVersion = await tx.articleVersion.create({
-        data: {
-          version: newVersionNumber,
-          title: targetVersion.title,
-          content: targetVersion.content,
-          status: targetVersion.status,
-          changeType: "REVERT",
-          changeSummary: `Откат к версии ${targetVersion.version}`,
-          articleId: id,
-          authorId: auth.userId!,
-        },
-      });
-
-      // Обновляем саму статью
-      const updatedArticle = await tx.article.update({
-        where: { id },
-        data: {
-          title: targetVersion.title,
-          content: targetVersion.content,
-          status: targetVersion.status,
-        },
-        include: {
-          author: { select: { id: true, name: true, email: true } },
-          folder: { select: { id: true, name: true, slug: true } },
-        },
-      });
-
-      return { article: updatedArticle, version: newVersion };
+    const version = await prisma.articleVersion.findFirst({
+      where: { articleId: id },
+      orderBy: { version: "desc" },
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({ article, version });
   } catch (error) {
+    if (error instanceof ArticleNotFoundError) {
+      return NextResponse.json({ error: error.message }, { status: 404 });
+    }
     console.error("Revert error:", error);
     return NextResponse.json({ error: "Ошибка отката версии" }, { status: 500 });
   }

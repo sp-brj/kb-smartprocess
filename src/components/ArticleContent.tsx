@@ -50,13 +50,15 @@ export function ArticleContent({ content: initialContent, articleId }: Props) {
     });
     setContent(newContent);
 
-    // Сохраняем изменения в БД если есть articleId
+    // Сохраняем изменения в БД если есть articleId. minor: без новой версии и
+    // без переиндексации — иначе каждый клик по чекбоксу плодил версию и
+    // полный пересчёт эмбеддингов.
     if (articleId) {
       try {
         await fetch(`/api/articles/${articleId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: newContent }),
+          body: JSON.stringify({ content: newContent, minor: true }),
         });
       } catch (error) {
         console.error("Failed to save checkbox state:", error);

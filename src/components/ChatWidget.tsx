@@ -2,6 +2,7 @@
 
 import { useReducer, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useEscapeKey } from "@/lib/use-escape-key";
 
 interface ArticleSource {
   id: string;
@@ -88,6 +89,7 @@ export function ChatWidget() {
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Restore messages from sessionStorage
   useEffect(() => {
@@ -113,6 +115,14 @@ export function ChatWidget() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [state.messages]);
+
+  // Фокус в поле ввода при открытии панели: иначе набранный вопрос уходил
+  // в строку поиска в шапке.
+  useEffect(() => {
+    if (state.isOpen) inputRef.current?.focus();
+  }, [state.isOpen]);
+
+  useEscapeKey(state.isOpen, () => dispatch({ type: "TOGGLE_OPEN" }));
 
   const sendMessage = useCallback(async (message: string) => {
     if (!message.trim() || state.isLoading) return;
@@ -281,6 +291,7 @@ export function ChatWidget() {
         {/* Input */}
         <form onSubmit={handleSubmit} className="p-4 border-t border-border flex gap-2">
           <input
+            ref={inputRef}
             data-testid="chat-input"
             type="text"
             value={state.input}

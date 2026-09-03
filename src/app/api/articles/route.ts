@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { generateSlug } from "@/lib/wikilinks";
-import { createArticleLinks, linkOrphanedReferences } from "@/lib/wikilinks-db";
 import { authenticateRequest, hasPermission } from "@/lib/api-auth";
-import { reindexArticle } from "@/lib/reindex";
 import { parseListRange } from "@/lib/pagination";
+import { createArticle, type ArticleStatus } from "@/lib/article-write";
 
 // GET /api/articles - list articles
 export async function GET(request: NextRequest) {
@@ -17,19 +16,31 @@ export async function GET(request: NextRequest) {
   const folderId = searchParams.get("folderId");
   const status = searchParams.get("status");
   const noFolder = searchParams.get("noFolder");
+  // Фильтры для MCP/внешних клиентов: раньше MCP фильтровал по тегу и автору
+  // на своей стороне поверх первой страницы (100 статей) и молча терял остальное.
+  const tag = searchParams.get("tag"); // slug или имя тега
+  const author = searchParams.get("author"); // email автора
 
   // Пагинация: раньше список тянул ВСЕ статьи целиком вместе с полным content.
   // Теперь — окно (по умолчанию 100, максимум 500) и без тела статьи;
   // content отдаёт GET /api/articles/[id].
   const { take, skip } = parseListRange(searchParams);
 
-  const where: Record<string, unknown> = {};
+  const where: Prisma.ArticleWhereInput = {};
   if (noFolder === "true") {
     where.folderId = null;
   } else if (folderId) {
     where.folderId = folderId;
   }
-  if (status) where.status = status;
+  if (status === "DRAFT" || status === "PUBLISHED") where.status = status;
+  if (tag) {
+    where.tags = {
+      some: {
+        tag: { OR: [{ slug: tag }, { name: { equals: tag, mode: "insensitive" } }] },
+      },
+    };
+  }
+  if (author) where.author = { email: { equals: author, mode: "insensitive" } };
 
   const [total, articles] = await Promise.all([
     prisma.article.count({ where }),
@@ -82,75 +93,19 @@ export async function POST(request: NextRequest) {
   try {
     const { title, content, folderId, status } = await request.json();
 
-    if (!title) {
+    if (!title || typeof title !== "string" || !title.trim()) {
       return NextResponse.json({ error: "Заголовок обязателен" }, { status: 400 });
     }
 
-    // Generate slug with Cyrillic transliteration
-    const baseSlug = generateSlug(title);
-
-    // Check uniqueness
-    const existingArticle = await prisma.article.findUnique({ where: { slug: baseSlug } });
-    const slug = existingArticle ? `${baseSlug}-${Date.now()}` : baseSlug;
-
-    const articleContent = content || "";
-    const articleStatus = status || "DRAFT";
-
-    // Транзакция: создаем статью + первую версию
-    const article = await prisma.$transaction(async (tx) => {
-      const newArticle = await tx.article.create({
-        data: {
-          title,
-          content: articleContent,
-          slug,
-          status: articleStatus,
-          publishedAt: articleStatus === "PUBLISHED" ? new Date() : null,
-          folderId: folderId || null,
-          authorId: auth.userId!,
-        },
-        include: {
-          author: { select: { id: true, name: true, email: true } },
-          folder: { select: { id: true, name: true, slug: true } },
-          tags: { include: { tag: true } },
-        },
-      });
-
-      // Создаем первую версию
-      await tx.articleVersion.create({
-        data: {
-          version: 1,
-          title: newArticle.title,
-          content: newArticle.content,
-          status: newArticle.status,
-          changeType: "CREATE",
-          articleId: newArticle.id,
-          authorId: auth.userId!,
-        },
-      });
-
-      return newArticle;
+    const article = await createArticle({
+      title: title.trim(),
+      content: typeof content === "string" ? content : "",
+      folderId: typeof folderId === "string" ? folderId : null,
+      status: status === "PUBLISHED" ? "PUBLISHED" : ("DRAFT" satisfies ArticleStatus),
+      authorId: auth.userId!,
     });
 
-    // Создаем wiki-ссылки (после транзакции)
-    if (articleContent) {
-      await createArticleLinks(article.id, articleContent);
-    }
-
-    // Связываем "битые" ссылки из других статей
-    await linkOrphanedReferences(article.id, title);
-
-    // Преобразуем теги
-    const articleWithTags = {
-      ...article,
-      tags: article.tags.map((at) => at.tag),
-    };
-
-    // Fire-and-forget reindex (don't await, don't block response)
-    reindexArticle(article.id).catch((err) =>
-      console.error("Reindex error:", err)
-    );
-
-    return NextResponse.json(articleWithTags, { status: 201 });
+    return NextResponse.json(article, { status: 201 });
   } catch (error) {
     console.error("Create article error:", error);
     return NextResponse.json({ error: "Ошибка создания статьи" }, { status: 500 });
