@@ -4,8 +4,16 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import crypto from "crypto";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Роут публичный (трекер на странице статьи): без лимита любой бот заполняет
+  // ArticleView бесконечно. Дашборда нет с ADR-002, но сырьё решено копить.
+  const rl = await rateLimit(`track:${clientIp(request.headers)}`, 60, 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   try {
     const { articleId, sessionId, duration } = await request.json();
 
