@@ -18,6 +18,13 @@
 | `list_tags`           | Все теги                                                    |
 | `add_tags_to_article` | Прикрепить теги к статье                                    |
 | `archive_article`     | Soft-delete: `DRAFT` + тег `archived`. Хард-delete — нет.   |
+| `semantic_search`     | Поиск по смыслу (эмбеддинги + pgvector), без LLM             |
+| `get_folder` / `create_folder` / `update_folder` / `delete_folder` | CRUD папок (глубина ≤ 3, удаление только пустой; `parent_id=""` — в корень) |
+| `get_backlinks`       | Кто ссылается на статью через `[[…]]`                       |
+| `list_recent` / `get_stats` | Последние 5 статей / счётчики                          |
+| `list_versions` / `get_version` / `diff_versions` / `revert_version` | История версий и откат |
+| `create_tag` / `set_article_tags` | Создать тег / заменить весь набор тегов статьи      |
+| `suggest_links`       | Автодополнение заголовков для wiki-ссылок                   |
 
 Все методы, возвращающие статью, добавляют поле `url` = `KB_URL + /articles/{slug}`.
 

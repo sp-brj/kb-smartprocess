@@ -16,7 +16,13 @@ export default async function TagPage({ params }: Props) {
       articles: {
         include: {
           article: {
-            include: {
+            // select без content
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              status: true,
+              updatedAt: true,
               author: { select: { name: true, email: true } },
               folder: { select: { name: true, slug: true } },
               tags: { include: { tag: true } },

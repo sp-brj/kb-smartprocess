@@ -144,6 +144,10 @@ async def _put(path: str, json: dict) -> dict:
     return await _request("PUT", path, json=json)
 
 
+async def _delete(path: str):
+    return await _request("DELETE", path)
+
+
 @mcp.tool()
 async def whoami() -> dict:
     """Информация о текущем подключении к KB: какой ключ, URL, доступен ли API.
@@ -341,6 +345,149 @@ async def archive_article(article_id: str) -> dict:
         "url": _article_url(article.get("slug")),
         "note": "Статус → DRAFT, добавлен тег archived. Хард-delete недоступен из MCP.",
     }
+
+
+# ---------------------------------------------------------------------------
+# Фаза 2 (аудит 2026-09-03): обёртки над уже существующими эндпоинтами KB
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def semantic_search(query: str, limit: int = 5, max_distance: float = 0.6) -> dict:
+    """Поиск по смыслу: эмбеддинг запроса + pgvector, БЕЗ генерации ответа LLM.
+
+    Возвращает статьи с лучшими фрагментами (chunks) и дистанцией (cosine,
+    0 — идентично; всё дальше max_distance отбрасывается). Индексируются
+    только опубликованные статьи. Для точного совпадения слов — search_articles.
+
+    Args:
+        query: вопрос или фраза своими словами
+        limit: сколько статей вернуть (1–20)
+        max_distance: порог релевантности 0–1 (по умолчанию 0.6)
+    """
+    resp = await _get(
+        "/api/search/semantic",
+        {"q": query, "limit": limit, "maxDistance": max_distance},
+    )
+    if isinstance(resp, dict) and isinstance(resp.get("articles"), list):
+        resp = {**resp, "articles": _enrich_list(resp["articles"])}
+    return resp
+
+
+@mcp.tool()
+async def get_folder(folder_id: str) -> dict:
+    """Папка по ID: сама папка, подпапки (children) и её статьи."""
+    return await _get(f"/api/folders/{folder_id}")
+
+
+@mcp.tool()
+async def create_folder(name: str, parent_id: str | None = None) -> dict:
+    """Создать папку (глубина вложенности не больше 3 уровней).
+
+    Args:
+        name: название папки
+        parent_id: ID родительской папки; None — в корне
+    """
+    data = {"name": name}
+    if parent_id:
+        data["parentId"] = parent_id
+    return await _post("/api/folders", data)
+
+
+@mcp.tool()
+async def update_folder(folder_id: str, name: str | None = None, parent_id: str | None = None) -> dict:
+    """Переименовать и/или переместить папку.
+
+    API сам проверяет циклы и глубину ≤ 3.
+
+    Args:
+        name: новое название (None — не менять)
+        parent_id: новый родитель; "" — переместить в корень; None — не менять
+    """
+    data = {}
+    if name is not None:
+        data["name"] = name
+    if parent_id is not None:
+        data["parentId"] = parent_id or None
+    if not data:
+        raise RuntimeError("update_folder: нечего обновлять — не передано ни одного поля")
+    return await _patch(f"/api/folders/{folder_id}", data)
+
+
+@mcp.tool()
+async def delete_folder(folder_id: str) -> dict:
+    """Удалить ПУСТУЮ папку (без статей и подпапок). Иначе API вернёт ошибку."""
+    return await _delete(f"/api/folders/{folder_id}") or {"success": True}
+
+
+@mcp.tool()
+async def get_backlinks(article_id: str) -> list:
+    """Какие статьи ссылаются на данную через [[wiki-ссылки]]. Проверять перед слиянием/переносом."""
+    items = await _get(f"/api/articles/{article_id}/backlinks")
+    if isinstance(items, list):
+        return [{**x, "article": _enrich_article(x.get("article") or {})} for x in items]
+    return items
+
+
+@mcp.tool()
+async def list_recent() -> list:
+    """5 последних изменённых статей (id, title, slug, updatedAt)."""
+    return _enrich_list(await _get("/api/articles/recent"))
+
+
+@mcp.tool()
+async def get_stats() -> dict:
+    """Счётчики базы: всего статей и сколько без папки."""
+    return await _get("/api/articles/stats")
+
+
+@mcp.tool()
+async def list_versions(article_id: str) -> list:
+    """История версий статьи (новые первыми): номер, тип изменения, автор, дата."""
+    return await _get(f"/api/articles/{article_id}/versions")
+
+
+@mcp.tool()
+async def get_version(article_id: str, version_id: str) -> dict:
+    """Конкретная версия статьи с полным содержимым на тот момент."""
+    return await _get(f"/api/articles/{article_id}/versions/{version_id}")
+
+
+@mcp.tool()
+async def diff_versions(article_id: str, version_id: str, compare_with: str | None = None) -> dict:
+    """Diff версии с предыдущей (или с compare_with — ID другой версии)."""
+    params = {"compare": compare_with} if compare_with else None
+    return await _get(f"/api/articles/{article_id}/versions/{version_id}/diff", params)
+
+
+@mcp.tool()
+async def revert_version(article_id: str, version_id: str) -> dict:
+    """Откатить статью к версии. Создаётся новая версия типа REVERT, текущее состояние не теряется."""
+    resp = await _post(f"/api/articles/{article_id}/versions/{version_id}/revert", {})
+    if isinstance(resp, dict) and isinstance(resp.get("article"), dict):
+        resp = {**resp, "article": _enrich_article(resp["article"])}
+    return resp
+
+
+@mcp.tool()
+async def create_tag(name: str, color: str | None = None) -> dict:
+    """Создать тег. Если тег с таким именем уже есть — API вернёт ошибку."""
+    data = {"name": name}
+    if color:
+        data["color"] = color
+    return await _post("/api/tags", data)
+
+
+@mcp.tool()
+async def set_article_tags(article_id: str, tag_ids: list[str]) -> list:
+    """Заменить ВЕСЬ набор тегов статьи (так можно и снять тег). Добавить без замены — add_tags_to_article."""
+    return await _put(f"/api/articles/{article_id}/tags", {"tagIds": list(tag_ids)})
+
+
+@mcp.tool()
+async def suggest_links(query: str) -> list:
+    """Автодополнение заголовков для [[wiki-ссылок]] — чтобы не плодить битые ссылки."""
+    return _enrich_list(await _get("/api/articles/suggestions", {"q": query}))
 
 
 async def _startup_check() -> None:
