@@ -2,8 +2,8 @@ import { NextRequest, after } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { hashApiKey, verifyApiKey } from "@/lib/api-key-hash";
 
 export type Permission = "read" | "write" | "admin";
 
@@ -37,7 +37,8 @@ export async function authenticateRequest(
       include: { user: true },
     });
 
-    if (apiKey && (await bcrypt.compare(token, apiKey.key))) {
+    // sha256 для новых ключей, bcrypt для выпущенных раньше (см. api-key-hash.ts)
+    if (apiKey && (await verifyApiKey(token, apiKey.key))) {
       // Обновить lastUsedAt после ответа. Без after() на Vercel такой
       // «fire-and-forget» мог не выполниться: функция замораживается сразу
       // после отправки ответа.
@@ -108,7 +109,7 @@ export function hasPermission(auth: AuthResult, required: Permission): boolean {
 
 /**
  * Генерация нового API ключа
- * Возвращает { rawKey, hashedKey, keyPrefix }
+ * Возвращает { rawKey, hashedKey, keyPrefix }. hashedKey — SHA-256 (см. api-key-hash.ts).
  */
 export async function generateApiKey(): Promise<{
   rawKey: string;
@@ -118,7 +119,7 @@ export async function generateApiKey(): Promise<{
   // Генерируем 32-байтовый ключ = 64 hex символа
   const rawKey = `kb_${crypto.randomBytes(32).toString("hex")}`;
   const keyPrefix = rawKey.slice(0, 8);
-  const hashedKey = await bcrypt.hash(rawKey, 10);
+  const hashedKey = hashApiKey(rawKey);
 
   return { rawKey, hashedKey, keyPrefix };
 }

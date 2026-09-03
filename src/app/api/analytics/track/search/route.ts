@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Публичный роут записи — лимит по IP, чтобы SearchQuery не заливали ботом.
+  const rl = await rateLimit(`track:${clientIp(request.headers)}`, 60, 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   try {
     const { query, resultsCount, sessionId, clickedArticleId } =
       await request.json();
